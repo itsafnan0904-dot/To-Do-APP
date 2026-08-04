@@ -1,0 +1,160 @@
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background-color: #f4f4f4;
+}
+
+button {
+    padding: 10px 15px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    background-color: #333;
+    color: white;
+}
+
+button:hover {
+    opacity: 0.8;
+}
+
+input {
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+}
+
+/* =====================
+   LOGIN / SIGNUP
+===================== */
+
+.auth-container {
+    width: 400px;
+    max-width: 90%;
+    margin: 100px auto;
+    padding: 30px;
+    background-color: white;
+    border-radius: 10px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    text-align: center;
+}
+
+.auth-container form {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.auth-container form button {
+    margin-top: 10px;
+}
+
+.auth-container p {
+    margin-top: 20px;
+}
+
+/* =====================
+   DASHBOARD
+===================== */
+
+.dashboard-container {
+    width: 800px;
+    max-width: 90%;
+    margin: 50px auto;
+    padding: 30px;
+    background-color: white;
+    border-radius: 10px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+.dashboard-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+}
+
+.add-todo-form {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 30px;
+}
+
+.add-todo-form input {
+    flex: 1;
+}
+
+.todo-list {
+    padding: 0;
+    list-style: none;
+}
+
+.todo-item {
+    padding: 15px;
+    margin-bottom: 10px;
+    background-color: #f4f4f4;
+    border-radius: 5px;
+}
+
+.todo-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 15px;
+}
+
+.todo-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.todo-actions {
+    display: flex;
+    gap: 5px;
+}
+
+.completed {
+    text-decoration: line-through;
+    opacity: 0.5;
+}
+
+.edit-container {
+    display: flex;
+    gap: 10px;
+}
+
+.edit-container input {
+    flex: 1;
+}
+
+/* =====================
+   MOBILE
+===================== */
+
+@media (max-width: 600px) {
+    .dashboard-header {
+        flex-direction: column;
+        gap: 15px;
+    }
+
+    .add-todo-form {
+        flex-direction: column;
+    }
+
+    .todo-content {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .todo-actions {
+        flex-wrap: wrap;
+    }
+
+    .edit-container {
+        flex-direction: column;
+    }
+}

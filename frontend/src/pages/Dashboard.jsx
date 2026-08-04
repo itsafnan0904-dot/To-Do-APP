@@ -1,0 +1,480 @@
+import { useEffect, useState } from "react";
+import axios from "axios";
+
+function Dashboard() {
+    const [todos, setTodos] = useState([]);
+    const [title, setTitle] = useState("");
+
+    const [editingId, setEditingId] = useState(null);
+    const [editTitle, setEditTitle] = useState("");
+
+    // =========================
+    // CHECK LOGIN
+    // =========================
+
+    useEffect(() => {
+        const token = localStorage.getItem("token");
+
+        if (!token) {
+            window.location.href = "/";
+        }
+    }, []);
+
+    // =========================
+    // GET TODOS
+    // =========================
+
+    const fetchTodos = async () => {
+        try {
+            const token = localStorage.getItem("token");
+
+            if (!token) {
+                window.location.href = "/";
+                return;
+            }
+
+            const response = await axios.get(
+                "http://localhost:5000/api/todos",
+                {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                    },
+                }
+            );
+
+            setTodos(response.data.todos);
+
+        } catch (error) {
+            console.error(
+                "Error fetching Todos:",
+                error
+            );
+
+            if (error.response?.status === 401) {
+                localStorage.removeItem("token");
+                window.location.href = "/";
+            }
+        }
+    };
+
+    // Fetch Todos when Dashboard loads
+    useEffect(() => {
+        fetchTodos();
+    }, []);
+
+    // =========================
+    // ADD TODO
+    // =========================
+
+    const handleAddTodo = async (e) => {
+        e.preventDefault();
+
+        if (!title.trim()) {
+            return;
+        }
+
+        try {
+            const token = localStorage.getItem("token");
+
+            const response = await axios.post(
+                "http://localhost:5000/api/todos",
+                {
+                    title: title,
+                },
+                {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                    },
+                }
+            );
+
+            setTodos([
+                ...todos,
+                response.data.todo,
+            ]);
+
+            setTitle("");
+
+        } catch (error) {
+            console.error(
+                "Error adding Todo:",
+                error
+            );
+        }
+    };
+
+    // =========================
+    // EDIT TODO
+    // =========================
+
+    const handleEditTodo = async (id) => {
+        if (!editTitle.trim()) {
+            return;
+        }
+
+        try {
+            const token = localStorage.getItem("token");
+
+            const response = await axios.put(
+                `http://localhost:5000/api/todos/${id}`,
+                {
+                    title: editTitle,
+                },
+                {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                    },
+                }
+            );
+
+            setTodos(
+                todos.map((todo) =>
+                    todo._id === id
+                        ? response.data.todo
+                        : todo
+                )
+            );
+
+            setEditingId(null);
+            setEditTitle("");
+
+        } catch (error) {
+            console.error(
+                "Error updating Todo:",
+                error
+            );
+        }
+    };
+
+    // =========================
+    // DELETE TODO
+    // =========================
+
+    const handleDeleteTodo = async (id) => {
+        const confirmDelete = window.confirm(
+            "Are you sure you want to delete this Todo?"
+        );
+
+        if (!confirmDelete) {
+            return;
+        }
+
+        try {
+            const token = localStorage.getItem("token");
+
+            await axios.delete(
+                `http://localhost:5000/api/todos/${id}`,
+                {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                    },
+                }
+            );
+
+            setTodos(
+                todos.filter(
+                    (todo) => todo._id !== id
+                )
+            );
+
+        } catch (error) {
+            console.error(
+                "Error deleting Todo:",
+                error
+            );
+        }
+    };
+
+    // =========================
+    // COMPLETE / UNCOMPLETE
+    // =========================
+
+    const handleToggleTodo = async (
+        id,
+        completed
+    ) => {
+        try {
+            const token = localStorage.getItem("token");
+
+            const response = await axios.put(
+                `http://localhost:5000/api/todos/${id}`,
+                {
+                    completed: !completed,
+                },
+                {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                    },
+                }
+            );
+
+            setTodos(
+                todos.map((todo) =>
+                    todo._id === id
+                        ? response.data.todo
+                        : todo
+                )
+            );
+
+        } catch (error) {
+            console.error(
+                "Error updating Todo:",
+                error
+            );
+        }
+    };
+
+    // =========================
+    // MOVE UP
+    // =========================
+
+    const handleMoveUp = async (id) => {
+        try {
+            const token = localStorage.getItem("token");
+
+            await axios.put(
+                `http://localhost:5000/api/todos/${id}/up`,
+                {},
+                {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                    },
+                }
+            );
+
+            fetchTodos();
+
+        } catch (error) {
+            console.error(
+                "Error moving Todo up:",
+                error
+            );
+        }
+    };
+
+    // =========================
+    // MOVE DOWN
+    // =========================
+
+    const handleMoveDown = async (id) => {
+        try {
+            const token = localStorage.getItem("token");
+
+            await axios.put(
+                `http://localhost:5000/api/todos/${id}/down`,
+                {},
+                {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                    },
+                }
+            );
+
+            fetchTodos();
+
+        } catch (error) {
+            console.error(
+                "Error moving Todo down:",
+                error
+            );
+        }
+    };
+
+    // =========================
+    // LOGOUT
+    // =========================
+
+    const handleLogout = () => {
+        localStorage.removeItem("token");
+
+        window.location.href = "/";
+    };
+
+    // =========================
+    // DASHBOARD UI
+    // =========================
+
+    return (
+        <div className="dashboard-container">
+
+            <div className="dashboard-header">
+                <h1>Todo Dashboard</h1>
+
+                <button onClick={handleLogout}>
+                    Logout
+                </button>
+            </div>
+
+            {/* ADD TODO */}
+
+            <form
+                onSubmit={handleAddTodo}
+                className="add-todo-form"
+            >
+                <input
+                    type="text"
+                    placeholder="Enter a Todo"
+                    value={title}
+                    onChange={(e) =>
+                        setTitle(e.target.value)
+                    }
+                />
+
+                <button type="submit">
+                    Add Todo
+                </button>
+            </form>
+
+            <h2>My Todos</h2>
+
+            {/* TODO LIST */}
+
+            {todos.length === 0 ? (
+                <p>No Todos found.</p>
+            ) : (
+                <ul className="todo-list">
+
+                    {todos.map((todo) => (
+
+                        <li
+                            key={todo._id}
+                            className="todo-item"
+                        >
+
+                            {editingId === todo._id ? (
+
+                                // EDIT MODE
+
+                                <div className="edit-container">
+
+                                    <input
+                                        type="text"
+                                        value={editTitle}
+                                        onChange={(e) =>
+                                            setEditTitle(
+                                                e.target.value
+                                            )
+                                        }
+                                    />
+
+                                    <button
+                                        onClick={() =>
+                                            handleEditTodo(
+                                                todo._id
+                                            )
+                                        }
+                                    >
+                                        Save
+                                    </button>
+
+                                    <button
+                                        onClick={() => {
+                                            setEditingId(
+                                                null
+                                            );
+
+                                            setEditTitle(
+                                                ""
+                                            );
+                                        }}
+                                    >
+                                        Cancel
+                                    </button>
+
+                                </div>
+
+                            ) : (
+
+                                // NORMAL MODE
+
+                                <div className="todo-content">
+
+                                    <div className="todo-info">
+
+                                        <input
+                                            type="checkbox"
+                                            checked={
+                                                todo.completed
+                                            }
+                                            onChange={() =>
+                                                handleToggleTodo(
+                                                    todo._id,
+                                                    todo.completed
+                                                )
+                                            }
+                                        />
+
+                                        <span
+                                            className={
+                                                todo.completed
+                                                    ? "completed"
+                                                    : ""
+                                            }
+                                        >
+                                            {todo.title}
+                                        </span>
+
+                                    </div>
+
+                                    <div className="todo-actions">
+
+                                        <button
+                                            onClick={() => {
+                                                setEditingId(
+                                                    todo._id
+                                                );
+
+                                                setEditTitle(
+                                                    todo.title
+                                                );
+                                            }}
+                                        >
+                                            Edit
+                                        </button>
+
+                                        <button
+                                            onClick={() =>
+                                                handleDeleteTodo(
+                                                    todo._id
+                                                )
+                                            }
+                                        >
+                                            Delete
+                                        </button>
+
+                                        <button
+                                            onClick={() =>
+                                                handleMoveUp(
+                                                    todo._id
+                                                )
+                                            }
+                                        >
+                                            ↑
+                                        </button>
+
+                                        <button
+                                            onClick={() =>
+                                                handleMoveDown(
+                                                    todo._id
+                                                )
+                                            }
+                                        >
+                                            ↓
+                                        </button>
+
+                                    </div>
+
+                                </div>
+                            )}
+
+                        </li>
+                    ))}
+
+                </ul>
+            )}
+
+        </div>
+    );
+}
+
+export default Dashboard;
