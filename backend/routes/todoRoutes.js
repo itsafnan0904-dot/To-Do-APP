@@ -5,7 +5,6 @@ import authMiddleware from "../middleware/authMiddleware.js";
 const router = express.Router();
 
 
-// ==================== CREATE TODO ====================
 
 router.post("/", authMiddleware, async (req, res) => {
     try {
@@ -43,7 +42,6 @@ router.post("/", authMiddleware, async (req, res) => {
 });
 
 
-// ==================== GET ALL TODOS ====================
 
 router.get("/", authMiddleware, async (req, res) => {
     try {
@@ -66,7 +64,7 @@ router.get("/", authMiddleware, async (req, res) => {
 });
 
 
-// ==================== UPDATE TODO ====================
+
 
 router.put("/:id", authMiddleware, async (req, res) => {
     try {
@@ -108,7 +106,7 @@ router.put("/:id", authMiddleware, async (req, res) => {
 });
 
 
-// ==================== DELETE TODO ====================
+
 
 router.delete("/:id", authMiddleware, async (req, res) => {
     try {
@@ -141,7 +139,6 @@ router.delete("/:id", authMiddleware, async (req, res) => {
 });
 
 
-// ==================== MOVE TODO UP ====================
 
 router.put("/:id/up", authMiddleware, async (req, res) => {
     try {
@@ -188,8 +185,6 @@ router.put("/:id/up", authMiddleware, async (req, res) => {
     }
 });
 
-
-// ==================== MOVE TODO DOWN ====================
 
 router.put("/:id/down", authMiddleware, async (req, res) => {
     try {

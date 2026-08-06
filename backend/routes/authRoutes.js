@@ -6,13 +6,12 @@ import authMiddleware from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
-// ==================== SIGNUP ====================
 
 router.post("/signup", async (req, res) => {
     try {
         const { name, email, password } = req.body;
 
-        // Check if user already exists
+
         const existingUser = await User.findOne({ email });
 
         if (existingUser) {
@@ -21,7 +20,7 @@ router.post("/signup", async (req, res) => {
             });
         }
 
-        // Hash the password
+    
         const hashedPassword = await bcrypt.hash(password, 10);
 
         // Create new user
@@ -31,7 +30,7 @@ router.post("/signup", async (req, res) => {
             password: hashedPassword,
         });
 
-        // Send response
+     
         res.status(201).json({
             message: "User created successfully",
             user: {
@@ -51,13 +50,11 @@ router.post("/signup", async (req, res) => {
 });
 
 
-// ==================== LOGIN ====================
 
 router.post("/login", async (req, res) => {
     try {
         const { email, password } = req.body;
 
-        // Find user by email
         const user = await User.findOne({ email });
 
         if (!user) {
@@ -66,7 +63,6 @@ router.post("/login", async (req, res) => {
             });
         }
 
-        // Compare entered password with hashed password
         const isPasswordCorrect = await bcrypt.compare(
             password,
             user.password
@@ -78,7 +74,6 @@ router.post("/login", async (req, res) => {
             });
         }
 
-        // Create JWT token
         const token = jwt.sign(
             {
                 userId: user._id,
@@ -89,7 +84,6 @@ router.post("/login", async (req, res) => {
             }
         );
 
-        // Send response
         res.status(200).json({
             message: "Login successful",
             token,
@@ -110,7 +104,6 @@ router.post("/login", async (req, res) => {
 });
 
 
-// ==================== PROTECTED ROUTE ====================
 
 router.get("/protected", authMiddleware, (req, res) => {
     res.json({
