@@ -41,7 +41,7 @@ router.post("/", authMiddleware, async (req, res) => {
     }
 });
 
-
+// a GET request to fetch todos
 
 router.get("/", authMiddleware, async (req, res) => {
     try {
@@ -64,7 +64,7 @@ router.get("/", authMiddleware, async (req, res) => {
 });
 
 
-
+//Update todo route
 
 router.put("/:id", authMiddleware, async (req, res) => {
     try {
@@ -106,7 +106,7 @@ router.put("/:id", authMiddleware, async (req, res) => {
 });
 
 
-
+//Delete todo route
 
 router.delete("/:id", authMiddleware, async (req, res) => {
     try {
@@ -138,7 +138,7 @@ router.delete("/:id", authMiddleware, async (req, res) => {
     }
 });
 
-
+//Move todo up route
 
 router.put("/:id/up", authMiddleware, async (req, res) => {
     try {
