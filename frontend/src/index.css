@@ -168,3 +168,37 @@ input {
     border-radius: 6px;
     box-sizing: border-box;
 }
+
+.welcome-page {
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+.welcome-content {
+    text-align: center;
+    max-width: 650px;
+    width: 100%;
+}
+
+.welcome-content h1 {
+    font-size: 42px;
+    margin-bottom: 16px;
+}
+
+.welcome-content p {
+    font-size: 18px;
+    line-height: 1.6;
+    margin-bottom: 30px;
+}
+
+.welcome-content button {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    cursor: pointer;
+}

@@ -1,6 +1,7 @@
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import Dashboard from "./pages/Dashboard";
+import Welcome from "./pages/Welcome";
 
 function App() {
     const path = window.location.pathname;
@@ -11,6 +12,10 @@ function App() {
 
     if (path === "/dashboard") {
         return <Dashboard />;
+    }
+
+    if (path === "/welcome") {
+        return <Welcome />;
     }
 
     return <Login />;

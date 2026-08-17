@@ -38,8 +38,8 @@ function Login() {
 
             alert("Login successful!");
 
-            // Go to Dashboard
-            window.location.href = "/dashboard";
+            // Go to welcome
+            window.location.href = "/welcome";
 
         } catch (error) {
             console.error("Login error:", error);
