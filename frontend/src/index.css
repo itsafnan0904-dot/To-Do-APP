@@ -1,3 +1,7 @@
+/* =====================
+   GLOBAL
+===================== */
+
 * {
     box-sizing: border-box;
 }
@@ -21,11 +25,48 @@ button:hover {
     opacity: 0.8;
 }
 
-input {
+input,
+textarea {
     padding: 10px;
     border: 1px solid #ccc;
     border-radius: 5px;
 }
+
+
+/* =====================
+   NAVBAR
+===================== */
+
+.navbar {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 30px;
+    background-color: white;
+    border-bottom: 1px solid #ddd;
+}
+
+.navbar-logo h2 {
+    margin: 0;
+}
+
+.navbar-links {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.navbar-links a {
+    text-decoration: none;
+    color: #333;
+    font-weight: 500;
+}
+
+.navbar-links a:hover {
+    color: #007bff;
+}
+
 
 /* =====================
    LOGIN / SIGNUP
@@ -56,6 +97,7 @@ input {
     margin-top: 20px;
 }
 
+
 /* =====================
    DASHBOARD
 ===================== */
@@ -85,6 +127,13 @@ input {
 
 .add-todo-form input {
     flex: 1;
+}
+
+.search-bar {
+    width: 100%;
+    padding: 10px;
+    margin: 15px 0;
+    font-size: 16px;
 }
 
 .todo-list {
@@ -131,11 +180,58 @@ input {
     flex: 1;
 }
 
+
+/* =====================
+   WELCOME PAGE
+===================== */
+
+.welcome-page {
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+}
+
+.welcome-content {
+    width: 100%;
+    max-width: 650px;
+    text-align: center;
+}
+
+.welcome-content h1 {
+    font-size: 42px;
+    margin-bottom: 16px;
+}
+
+.welcome-content p {
+    font-size: 18px;
+    line-height: 1.6;
+    margin-bottom: 30px;
+}
+
+.welcome-content button {
+    padding: 12px 24px;
+    font-size: 16px;
+}
+
+
 /* =====================
    MOBILE
 ===================== */
 
 @media (max-width: 600px) {
+
+    .navbar {
+        flex-direction: column;
+        gap: 15px;
+    }
+
+    .navbar-links {
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+
     .dashboard-header {
         flex-direction: column;
         gap: 15px;
@@ -159,46 +255,91 @@ input {
     }
 }
 
-.search-bar {
-    width: 100%;
-    padding: 10px;
-    margin: 15px 0;
-    font-size: 16px;
-    border: 1px solid #ccc;
-    border-radius: 6px;
-    box-sizing: border-box;
-}
+/* =====================
+   AI AGENT
+===================== */
 
-.welcome-page {
-    min-height: 100vh;
+.agent-page {
+    min-height: calc(100vh - 70px);
     display: flex;
     justify-content: center;
-    align-items: center;
-    padding: 20px;
+    align-items: flex-start;
+    padding: 60px 20px;
+}
+
+.agent-container {
+    width: 800px;
+    max-width: 100%;
+    padding: 40px;
+    background-color: white;
+    border-radius: 12px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.08);
+}
+
+.agent-container h1 {
+    margin: 0 0 12px;
+    text-align: center;
+}
+
+.agent-description {
+    margin: 0 auto 30px;
+    max-width: 600px;
+    text-align: center;
+    line-height: 1.6;
+    color: #666;
+}
+
+.agent-form {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.agent-form textarea {
+    width: 100%;
+    padding: 15px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    font-family: Arial, sans-serif;
+    font-size: 16px;
+    line-height: 1.5;
+    resize: vertical;
     box-sizing: border-box;
 }
 
-.welcome-content {
-    text-align: center;
-    max-width: 650px;
-    width: 100%;
+.agent-form textarea:focus {
+    outline: none;
+    border-color: #007bff;
 }
 
-.welcome-content h1 {
-    font-size: 42px;
-    margin-bottom: 16px;
-}
-
-.welcome-content p {
-    font-size: 18px;
-    line-height: 1.6;
-    margin-bottom: 30px;
-}
-
-.welcome-content button {
-    padding: 12px 24px;
+.agent-form button {
+    align-self: center;
+    padding: 12px 25px;
     border: none;
     border-radius: 8px;
+    background-color: #333;
+    color: white;
     font-size: 16px;
     cursor: pointer;
+}
+
+.agent-form button:hover {
+    opacity: 0.8;
+}
+.agent-result {
+    margin-top: 30px;
+    padding: 20px;
+    background-color: #f4f4f4;
+    border-radius: 8px;
+}
+
+.agent-result h2 {
+    margin-top: 0;
+}
+
+.agent-result pre {
+    white-space: pre-wrap;
+    font-family: Arial, sans-serif;
+    line-height: 1.6;
+    margin: 0;
 }

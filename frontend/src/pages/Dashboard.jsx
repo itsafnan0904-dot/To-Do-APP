@@ -1,3 +1,4 @@
+import Navbar from "../components/Navbar";
 import { useEffect, useState } from "react";
 import axios from "axios";
 
@@ -244,119 +245,162 @@ function Dashboard() {
   // =========================
 
   return (
-    <div className="dashboard-container">
-      <div className="dashboard-header">
-        <h1>Todo Dashboard</h1>
+    <div>
+        <Navbar />
 
-        <button onClick={handleLogout}>Logout</button>
-      </div>
+        <div className="dashboard-container">
 
-      {/* ADD TODO */}
+            <div className="dashboard-header">
+                <h1>Todo Dashboard</h1>
 
-      <form onSubmit={handleAddTodo} className="add-todo-form">
-        <input
-          type="text"
-          placeholder="Enter a Todo"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-        />
+                <button onClick={handleLogout}>Logout</button>
+            </div>
 
-        <button type="submit">Add Todo</button>
-      </form>
-      {/* SEARCH BAR */}
+            {/* ADD TODO */}
 
-      <input
-        type="text"
-        className="search-bar"
-        placeholder="Search todos..."
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-      />
+            <form onSubmit={handleAddTodo} className="add-todo-form">
+                <input
+                    type="text"
+                    placeholder="Enter a Todo"
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                />
 
-      <h2>My Todos</h2>
+                <button type="submit">Add Todo</button>
+            </form>
 
-      {/* TODO LIST */}
+            {/* SEARCH BAR */}
 
-      {todos.length === 0 ? (
-        <p>No Todos found.</p>
-      ) : (
-        <ul className="todo-list">
-          {todos
-            .filter((todo) =>
-              todo.title.toLowerCase().includes(search.toLowerCase()),
-            )
-            .map((todo) => (
-              <li key={todo._id} className="todo-item">
-                {editingId === todo._id ? (
-                  // EDIT MODE
+            <input
+                type="text"
+                className="search-bar"
+                placeholder="Search todos..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+            />
 
-                  <div className="edit-container">
-                    <input
-                      type="text"
-                      value={editTitle}
-                      onChange={(e) => setEditTitle(e.target.value)}
-                    />
+            <h2>My Todos</h2>
 
-                    <button onClick={() => handleEditTodo(todo._id)}>
-                      Save
-                    </button>
+            {/* TODO LIST */}
 
-                    <button
-                      onClick={() => {
-                        setEditingId(null);
-                        setEditTitle("");
-                      }}
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                ) : (
-                  // NORMAL MODE
+            {todos.length === 0 ? (
+                <p>No Todos found.</p>
+            ) : (
+                <ul className="todo-list">
+                    {todos
+                        .filter((todo) =>
+                            todo.title
+                                .toLowerCase()
+                                .includes(search.toLowerCase())
+                        )
+                        .map((todo) => (
+                            <li key={todo._id} className="todo-item">
 
-                  <div className="todo-content">
-                    <div className="todo-info">
-                      <input
-                        type="checkbox"
-                        checked={todo.completed}
-                        onChange={() =>
-                          handleToggleTodo(todo._id, todo.completed)
-                        }
-                      />
+                                {editingId === todo._id ? (
 
-                      <span className={todo.completed ? "completed" : ""}>
-                        {todo.title}
-                      </span>
-                    </div>
+                                    // EDIT MODE
 
-                    <div className="todo-actions">
-                      <button
-                        onClick={() => {
-                          setEditingId(todo._id);
+                                    <div className="edit-container">
+                                        <input
+                                            type="text"
+                                            value={editTitle}
+                                            onChange={(e) =>
+                                                setEditTitle(e.target.value)
+                                            }
+                                        />
 
-                          setEditTitle(todo.title);
-                        }}
-                      >
-                        Edit
-                      </button>
+                                        <button
+                                            onClick={() =>
+                                                handleEditTodo(todo._id)
+                                            }
+                                        >
+                                            Save
+                                        </button>
 
-                      <button onClick={() => handleDeleteTodo(todo._id)}>
-                        Delete
-                      </button>
+                                        <button
+                                            onClick={() => {
+                                                setEditingId(null);
+                                                setEditTitle("");
+                                            }}
+                                        >
+                                            Cancel
+                                        </button>
+                                    </div>
 
-                      <button onClick={() => handleMoveUp(todo._id)}>↑</button>
+                                ) : (
 
-                      <button onClick={() => handleMoveDown(todo._id)}>
-                        ↓
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </li>
-            ))}
-        </ul>
-      )}
+                                    // NORMAL MODE
+
+                                    <div className="todo-content">
+
+                                        <div className="todo-info">
+                                            <input
+                                                type="checkbox"
+                                                checked={todo.completed}
+                                                onChange={() =>
+                                                    handleToggleTodo(
+                                                        todo._id,
+                                                        todo.completed
+                                                    )
+                                                }
+                                            />
+
+                                            <span
+                                                className={
+                                                    todo.completed
+                                                        ? "completed"
+                                                        : ""
+                                                }
+                                            >
+                                                {todo.title}
+                                            </span>
+                                        </div>
+
+                                        <div className="todo-actions">
+
+                                            <button
+                                                onClick={() => {
+                                                    setEditingId(todo._id);
+                                                    setEditTitle(todo.title);
+                                                }}
+                                            >
+                                                Edit
+                                            </button>
+
+                                            <button
+                                                onClick={() =>
+                                                    handleDeleteTodo(todo._id)
+                                                }
+                                            >
+                                                Delete
+                                            </button>
+
+                                            <button
+                                                onClick={() =>
+                                                    handleMoveUp(todo._id)
+                                                }
+                                            >
+                                                ↑
+                                            </button>
+
+                                            <button
+                                                onClick={() =>
+                                                    handleMoveDown(todo._id)
+                                                }
+                                            >
+                                                ↓
+                                            </button>
+
+                                        </div>
+                                    </div>
+                                )}
+                            </li>
+                        ))}
+                </ul>
+            )}
+
+        </div>
     </div>
-  );
-}
+)};
 
 export default Dashboard;

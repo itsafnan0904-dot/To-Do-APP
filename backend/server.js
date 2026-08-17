@@ -2,8 +2,10 @@ import express from "express";
 import mongoose from "mongoose";
 import cors from "cors";
 import dotenv from "dotenv";
+
 import todoRoutes from "./routes/todoRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
+import agentRoutes from "./routes/agentRoutes.js";
 
 dotenv.config();
 
@@ -16,7 +18,12 @@ app.use(express.json());
 
 // Authentication routes
 app.use("/api/auth", authRoutes);
+
+// Todo routes
 app.use("/api/todos", todoRoutes);
+
+// AI Agent routes
+app.use("/api/agent", agentRoutes);
 
 // Test route
 app.get("/", (req, res) => {
