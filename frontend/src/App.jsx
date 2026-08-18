@@ -11,12 +11,12 @@ function App() {
         return <Signup />;
     }
 
-    if (path === "/dashboard") {
-        return <Dashboard />;
-    }
-
     if (path === "/welcome") {
         return <Welcome />;
+    }
+
+    if (path === "/dashboard") {
+        return <Dashboard />;
     }
 
     if (path === "/agent") {

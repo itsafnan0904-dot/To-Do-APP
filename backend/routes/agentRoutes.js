@@ -3,6 +3,7 @@ import OpenAI from "openai";
 import dotenv from "dotenv";
 
 import authMiddleware from "../middleware/authMiddleware.js";
+import Todo from "../models/Todo.js";
 
 dotenv.config();
 
@@ -16,18 +17,15 @@ const client = new OpenAI({
 
 
 // ============================================================
-// AI AGENT ROUTE
+// GENERATE AI CHECKLIST
 // ============================================================
 
 router.post("/", authMiddleware, async (req, res) => {
     try {
-
-        // Get the user's request
         const { request } = req.body;
 
         console.log("Agent request:", request);
 
-        // Send request to Nemotron through OpenRouter
         const response = await client.chat.completions.create({
             model: "nvidia/nemotron-3-nano-30b-a3b",
 
@@ -66,31 +64,77 @@ Rules:
             ],
         });
 
-
-        // Get AI response
         const answer = response.choices[0].message.content;
 
         console.log("Nemotron response:", answer);
 
-
-        // Convert JSON text into a JavaScript object
         const checklist = JSON.parse(answer);
 
         console.log("Parsed checklist:", checklist);
 
+        // IMPORTANT:
+        // Do NOT save to MongoDB yet.
+        // Wait for the user to approve the checklist.
 
-        // Send checklist back to frontend
-        res.json({
+        res.status(200).json({
             tasks: checklist.tasks,
         });
 
-
     } catch (error) {
-
         console.error("Agent error:", error);
 
         res.status(500).json({
             message: "Failed to generate checklist",
+        });
+    }
+});
+
+
+// ============================================================
+// APPROVE CHECKLIST AND SAVE TO TODOS
+// ============================================================
+
+router.post("/approve", authMiddleware, async (req, res) => {
+    try {
+        const { tasks } = req.body;
+
+        if (!tasks || !Array.isArray(tasks) || tasks.length === 0) {
+            return res.status(400).json({
+                message: "No tasks provided",
+            });
+        }
+
+        // Get current Todo count
+        const todoCount = await Todo.countDocuments({
+            user: req.user.userId,
+        });
+
+        const createdTodos = [];
+
+        // Save approved tasks to MongoDB
+        for (let i = 0; i < tasks.length; i++) {
+            const todo = await Todo.create({
+                title: tasks[i],
+                completed: false,
+                position: todoCount + i,
+                user: req.user.userId,
+            });
+
+            createdTodos.push(todo);
+        }
+
+        console.log("Approved AI Todos:", createdTodos);
+
+        res.status(201).json({
+            message: "Checklist approved and tasks moved to Todo list",
+            tasks: createdTodos,
+        });
+
+    } catch (error) {
+        console.error("Approve checklist error:", error);
+
+        res.status(500).json({
+            message: "Failed to approve checklist",
         });
     }
 });

@@ -8,15 +8,15 @@ function Agent() {
 
     const handleGenerate = async (e) => {
         e.preventDefault();
-    
+
         console.log("1. Generate button clicked");
         console.log("2. User request:", request);
-    
+
         try {
             const token = localStorage.getItem("token");
-    
+
             console.log("3. Token:", token);
-    
+
             const response = await axios.post(
                 "http://localhost:5000/api/agent",
                 {
@@ -28,16 +28,58 @@ function Agent() {
                     },
                 }
             );
-    
+
             console.log("4. Backend response:", response.data);
-    
+
             setChecklist(response.data.tasks);
-    
+
         } catch (error) {
             console.error("5. Agent error:", error);
             console.error("6. Server response:", error.response?.data);
         }
     };
+
+
+    const handleApprove = async () => {
+        try {
+            const token = localStorage.getItem("token");
+
+            const tasks = checklist.map((task) => task.title || task);
+
+            const response = await axios.post(
+                "http://localhost:5000/api/agent/approve",
+                {
+                    tasks: tasks,
+                },
+                {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                    },
+                }
+            );
+
+            console.log("Approval response:", response.data);
+
+            window.alert(
+                "Checklist approved! The tasks have been moved to your Todo list."
+            );
+
+            window.location.href = "/dashboard";
+
+        } catch (error) {
+            console.error("Approve error:", error);
+            console.error(
+                "Server response:",
+                error.response?.data
+            );
+
+            window.alert(
+                "Failed to approve checklist. Please try again."
+            );
+        }
+    };
+
+
     return (
         <div>
             <Navbar />
@@ -56,7 +98,6 @@ function Agent() {
                         className="agent-form"
                         onSubmit={handleGenerate}
                     >
-
                         <textarea
                             value={request}
                             onChange={(e) =>
@@ -69,8 +110,8 @@ function Agent() {
                         <button type="submit">
                             Generate Checklist
                         </button>
-
                     </form>
+
 
                     {checklist.length > 0 && (
                         <div className="agent-result">
@@ -79,12 +120,20 @@ function Agent() {
 
                             <ul>
                                 {checklist.map((task, index) => (
-                                    <li key={index}>
+                                    <li key={task._id || index}>
                                         <input type="checkbox" />
-                                        <span>{task}</span>
+                                        <span>
+                                            {task.title || task}
+                                        </span>
                                     </li>
                                 ))}
                             </ul>
+
+                            <button
+                                onClick={handleApprove}
+                            >
+                                Approve Checklist
+                            </button>
 
                         </div>
                     )}
