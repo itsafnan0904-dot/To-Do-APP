@@ -16,32 +16,30 @@ const client = new OpenAI({
 });
 
 
+import Checklist from "../models/Checklist.js";
+
 // ============================================================
-// GENERATE AI CHECKLIST
+// CONVERSATIONAL AI CHECKLIST GENERATOR
 // ============================================================
 
 router.post("/", authMiddleware, async (req, res) => {
     try {
-        const { request } = req.body;
+        const { messages } = req.body;
 
-        console.log("Agent request:", request);
+        if (!messages || !Array.isArray(messages)) {
+            return res.status(400).json({ message: "Messages array is required" });
+        }
 
-        const response = await client.chat.completions.create({
-            model: "nvidia/nemotron-3-nano-30b-a3b",
+        const systemMessage = {
+            role: "system",
+            content: `
+You are an AI checklist assistant. You help the user figure out what tasks they need to do.
+Converse naturally with the user to understand their needs. Ask clarifying questions if necessary.
+When you have enough information and are ready to generate the final checklist, output a JSON block wrapped in \`\`\`json ... \`\`\`.
 
-            messages: [
-                {
-                    role: "system",
-                    content: `
-You are an AI checklist assistant.
-
-The user will describe something they want to accomplish.
-
-Convert their request into a clear checklist of actionable tasks.
-
-Return ONLY valid JSON in this exact format:
-
+The JSON must be in this exact format:
 {
+    "title": "A short title for this checklist",
     "tasks": [
         "Task 1",
         "Task 2",
@@ -49,92 +47,54 @@ Return ONLY valid JSON in this exact format:
     ]
 }
 
-Rules:
-- Return only JSON.
-- Do not use markdown.
-- Do not add explanations.
-- Each task must be a clear, actionable Todo item.
-                    `,
-                },
+Only output the JSON block when you are actually generating the checklist. Otherwise, converse normally.
+            `,
+        };
 
-                {
-                    role: "user",
-                    content: request,
-                },
-            ],
+        const apiMessages = [systemMessage, ...messages.map(msg => ({
+            role: msg.role === 'user' ? 'user' : 'assistant',
+            content: msg.content
+        }))];
+
+        const response = await client.chat.completions.create({
+            model: "nvidia/nemotron-3-nano-30b-a3b",
+            messages: apiMessages,
         });
 
         const answer = response.choices[0].message.content;
 
-        console.log("Nemotron response:", answer);
+        // Check if there is a JSON block
+        const jsonMatch = answer.match(/```json([\s\S]*?)```/);
+        
+        let checklistData = null;
+        let draftChecklist = null;
 
-        const checklist = JSON.parse(answer);
+        if (jsonMatch) {
+            try {
+                checklistData = JSON.parse(jsonMatch[1]);
+                
+                // Create draft checklist
+                draftChecklist = await Checklist.create({
+                    title: checklistData.title || "Generated Checklist",
+                    tasks: checklistData.tasks || [],
+                    user: req.user.userId,
+                    status: "draft"
+                });
 
-        console.log("Parsed checklist:", checklist);
-
-        // IMPORTANT:
-        // Do NOT save to MongoDB yet.
-        // Wait for the user to approve the checklist.
+            } catch (err) {
+                console.error("Error parsing AI JSON output", err);
+            }
+        }
 
         res.status(200).json({
-            tasks: checklist.tasks,
+            message: answer,
+            checklist: draftChecklist
         });
 
     } catch (error) {
         console.error("Agent error:", error);
-
         res.status(500).json({
-            message: "Failed to generate checklist",
-        });
-    }
-});
-
-
-// ============================================================
-// APPROVE CHECKLIST AND SAVE TO TODOS
-// ============================================================
-
-router.post("/approve", authMiddleware, async (req, res) => {
-    try {
-        const { tasks } = req.body;
-
-        if (!tasks || !Array.isArray(tasks) || tasks.length === 0) {
-            return res.status(400).json({
-                message: "No tasks provided",
-            });
-        }
-
-        // Get current Todo count
-        const todoCount = await Todo.countDocuments({
-            user: req.user.userId,
-        });
-
-        const createdTodos = [];
-
-        // Save approved tasks to MongoDB
-        for (let i = 0; i < tasks.length; i++) {
-            const todo = await Todo.create({
-                title: tasks[i],
-                completed: false,
-                position: todoCount + i,
-                user: req.user.userId,
-            });
-
-            createdTodos.push(todo);
-        }
-
-        console.log("Approved AI Todos:", createdTodos);
-
-        res.status(201).json({
-            message: "Checklist approved and tasks moved to Todo list",
-            tasks: createdTodos,
-        });
-
-    } catch (error) {
-        console.error("Approve checklist error:", error);
-
-        res.status(500).json({
-            message: "Failed to approve checklist",
+            message: "Failed to communicate with agent",
         });
     }
 });

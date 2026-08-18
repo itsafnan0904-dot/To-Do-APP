@@ -6,6 +6,7 @@ import dotenv from "dotenv";
 import todoRoutes from "./routes/todoRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
 import agentRoutes from "./routes/agentRoutes.js";
+import checklistRoutes from "./routes/checklistRoutes.js";
 
 dotenv.config();
 
@@ -24,6 +25,9 @@ app.use("/api/todos", todoRoutes);
 
 // AI Agent routes
 app.use("/api/agent", agentRoutes);
+
+// Checklist routes
+app.use("/api/checklists", checklistRoutes);
 
 // Test route
 app.get("/", (req, res) => {

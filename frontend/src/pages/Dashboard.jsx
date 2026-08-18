@@ -4,6 +4,7 @@ import axios from "axios";
 
 function Dashboard() {
   const [todos, setTodos] = useState([]);
+  const [draftChecklists, setDraftChecklists] = useState([]);
   const [title, setTitle] = useState("");
   const [search, setSearch] = useState("");
 
@@ -52,9 +53,27 @@ function Dashboard() {
     }
   };
 
-  // Fetch Todos when Dashboard loads
+  const fetchChecklists = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) return;
+
+      const response = await axios.get("http://localhost:5000/api/checklists", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      setDraftChecklists(response.data.checklists);
+    } catch (error) {
+      console.error("Error fetching Checklists:", error);
+    }
+  };
+
+  // Fetch Todos and Checklists when Dashboard loads
   useEffect(() => {
     fetchTodos();
+    fetchChecklists();
   }, []);
 
   // =========================
@@ -255,6 +274,43 @@ function Dashboard() {
 
                 <button onClick={handleLogout}>Logout</button>
             </div>
+
+            {/* PENDING CHECKLISTS */}
+            {draftChecklists.length > 0 && (
+                <div style={{ marginBottom: '30px' }}>
+                    <h2>Pending AI Checklists</h2>
+                    <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap' }}>
+                        {draftChecklists.map(checklist => (
+                            <div 
+                                key={checklist._id} 
+                                onClick={() => window.location.href = `/checklist/${checklist._id}`}
+                                style={{ 
+                                    border: '1px solid #ccc', 
+                                    borderRadius: '8px', 
+                                    padding: '15px', 
+                                    width: '300px',
+                                    cursor: 'pointer',
+                                    backgroundColor: '#f9f9f9',
+                                    boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                                }}
+                            >
+                                <h3 style={{ margin: '0 0 10px 0' }}>{checklist.title}</h3>
+                                <p style={{ fontSize: '14px', color: '#666', margin: '0 0 10px 0' }}>
+                                    {checklist.tasks.length} tasks generated
+                                </p>
+                                <ul style={{ fontSize: '13px', color: '#444', paddingLeft: '20px', margin: 0 }}>
+                                    {checklist.tasks.slice(0, 3).map((task, idx) => (
+                                        <li key={idx} style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                            {task}
+                                        </li>
+                                    ))}
+                                    {checklist.tasks.length > 3 && <li>...</li>}
+                                </ul>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
 
             {/* ADD TODO */}
 
