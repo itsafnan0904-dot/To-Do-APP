@@ -19,10 +19,17 @@ button {
     cursor: pointer;
     background-color: #333;
     color: white;
+    font-size: 14px;
+    transition: opacity 0.2s, background-color 0.2s;
 }
 
 button:hover {
-    opacity: 0.8;
+    opacity: 0.85;
+}
+
+button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
 }
 
 input,
@@ -30,8 +37,8 @@ textarea {
     padding: 10px;
     border: 1px solid #ccc;
     border-radius: 5px;
+    font-size: 14px;
 }
-
 
 /* =====================
    NAVBAR
@@ -67,7 +74,6 @@ textarea {
     color: #007bff;
 }
 
-
 /* =====================
    LOGIN / SIGNUP
 ===================== */
@@ -97,15 +103,14 @@ textarea {
     margin-top: 20px;
 }
 
-
 /* =====================
    DASHBOARD
 ===================== */
 
 .dashboard-container {
-    width: 800px;
+    width: 850px;
     max-width: 90%;
-    margin: 50px auto;
+    margin: 40px auto;
     padding: 30px;
     background-color: white;
     border-radius: 10px;
@@ -136,50 +141,557 @@ textarea {
     font-size: 16px;
 }
 
-.todo-list {
-    padding: 0;
-    list-style: none;
-}
-
-.todo-item {
-    padding: 15px;
-    margin-bottom: 10px;
-    background-color: #f4f4f4;
-    border-radius: 5px;
-}
-
-.todo-content {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 15px;
-}
-
-.todo-info {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
 .todo-actions {
     display: flex;
     gap: 5px;
 }
 
-.completed {
-    text-decoration: line-through;
-    opacity: 0.5;
-}
-
 .edit-container {
     display: flex;
     gap: 10px;
+    flex-grow: 1;
 }
 
 .edit-container input {
     flex: 1;
 }
 
+/* Dashboard Checklists Section */
+
+.checklists-section {
+    margin-bottom: 30px;
+}
+
+.checklists-grid {
+    display: flex;
+    gap: 15px;
+    flex-wrap: wrap;
+}
+
+.checklist-card {
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    padding: 15px;
+    width: 300px;
+    cursor: pointer;
+    background-color: #f9f9f9;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.checklist-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.checklist-card.all-tasks-completed {
+    border-color: #22c55e;
+    background-color: #f0fdf4;
+}
+
+.checklist-card.all-tasks-completed .checklist-card-title {
+    text-decoration: line-through;
+    color: #15803d;
+}
+
+.checklist-card-top-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+}
+
+.checklist-card-checkbox {
+    width: 20px;
+    height: 20px;
+    accent-color: #22c55e;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.checklist-card-checkbox:disabled {
+    cursor: not-allowed;
+    opacity: 0.4;
+}
+
+
+.checklist-card-title {
+    margin: 0;
+    font-size: 18px;
+    word-break: break-word;
+}
+
+.checklist-card-meta {
+    font-size: 14px;
+    color: #666;
+    margin: 0 0 10px 0;
+}
+
+
+.checklist-preview-list {
+    font-size: 13px;
+    color: #444;
+    padding-left: 20px;
+    margin: 0;
+}
+
+.checklist-preview-item {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.checklist-preview-item.completed {
+    text-decoration: line-through;
+    opacity: 0.6;
+}
+
+/* =====================
+   CHECKLIST DETAIL FULL PAGE
+===================== */
+
+.checklist-detail-container {
+    max-width: 800px;
+    margin: 40px auto;
+    padding: 30px;
+    background-color: white;
+    border-radius: 10px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+.checklist-detail-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.checklist-title-wrapper {
+    flex-grow: 1;
+}
+
+.checklist-title-input {
+    font-size: 24px;
+    font-weight: bold;
+    border: 1px solid transparent;
+    padding: 5px;
+    width: 100%;
+    border-radius: 4px;
+}
+
+.checklist-title-input:focus {
+    border-color: #007bff;
+    outline: none;
+}
+
+.btn-delete-checklist {
+    background-color: #dc3545;
+    color: white;
+}
+
+.checklist-tasks-panel {
+    background-color: #f9f9f9;
+    padding: 20px;
+    border-radius: 8px;
+    border: 1px solid #ddd;
+}
+
+.checklist-tasks-list {
+    list-style-type: none;
+    padding: 0;
+    margin: 0;
+}
+
+.checklist-detail-task-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid #eee;
+}
+
+.checklist-task-main {
+    display: flex;
+    align-items: center;
+    flex-grow: 1;
+    gap: 10px;
+}
+
+.checklist-task-checkbox {
+    transform: scale(1.2);
+    cursor: pointer;
+}
+
+.checklist-task-title {
+    color: #000;
+}
+
+.checklist-task-title.completed {
+    text-decoration: line-through;
+    color: #888;
+}
+
+.checklist-task-edit-btn {
+    padding: 4px 8px;
+    font-size: 12px;
+    background-color: #e9ecef;
+    color: #333;
+}
+
+.checklist-task-delete-btn {
+    padding: 4px 8px;
+    font-size: 12px;
+    color: #dc3545;
+    border: 1px solid #dc3545;
+    background-color: transparent;
+}
+
+.checklist-detail-add-form {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.checklist-detail-add-input {
+    flex-grow: 1;
+    padding: 8px;
+    border-radius: 4px;
+    border: 1px solid #ccc;
+}
+
+.checklist-back-link-wrapper {
+    margin-top: 20px;
+}
+
+.checklist-back-link {
+    color: #007bff;
+    text-decoration: none;
+}
+
+.checklist-back-link:hover {
+    text-decoration: underline;
+}
+
+.loading-container {
+    padding: 30px;
+    text-align: center;
+    font-size: 18px;
+    color: #666;
+}
+
+/* =====================
+   AI AGENT PAGE
+===================== */
+
+.agent-page-wrapper {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    background-color: #f4f4f4;
+}
+
+.agent-columns-container {
+    display: flex;
+    flex: 1;
+    flex-wrap: wrap;
+    gap: 20px;
+    padding: 20px;
+    max-width: 1300px;
+    margin: 0 auto;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.agent-chat-column {
+    flex: 1 1 450px;
+    display: flex;
+    flex-direction: column;
+    background-color: white;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    height: calc(100vh - 120px);
+    min-height: 500px;
+}
+
+.agent-chat-title {
+    margin-top: 0;
+    margin-bottom: 15px;
+}
+
+.agent-chat-box {
+    flex: 1;
+    overflow-y: auto;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 15px;
+    background-color: #f9f9f9;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.agent-message-user {
+    align-self: flex-end;
+    background-color: #007bff;
+    color: white;
+    padding: 10px 14px;
+    border-radius: 12px;
+    max-width: 80%;
+    font-size: 14px;
+    line-height: 1.4;
+}
+
+.agent-message-assistant {
+    align-self: flex-start;
+    background-color: #e9ecef;
+    color: #222;
+    padding: 10px 14px;
+    border-radius: 12px;
+    max-width: 80%;
+    font-size: 14px;
+    line-height: 1.4;
+}
+
+.agent-message-text {
+    white-space: pre-wrap;
+}
+
+.agent-thinking {
+    align-self: flex-start;
+    background-color: #e9ecef;
+    padding: 10px 14px;
+    border-radius: 12px;
+    font-size: 14px;
+}
+
+.agent-chat-form {
+    display: flex;
+    gap: 10px;
+}
+
+.agent-chat-input {
+    flex: 1;
+    padding: 12px;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+}
+
+.agent-chat-send-btn {
+    padding: 12px 20px;
+    cursor: pointer;
+    background-color: #007bff;
+    color: white;
+    border-radius: 6px;
+    font-weight: bold;
+}
+
+/* Drafts Column */
+
+.agent-drafts-column {
+    flex: 1 1 450px;
+    display: flex;
+    flex-direction: column;
+    background-color: white;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    height: calc(100vh - 120px);
+    min-height: 500px;
+    overflow-y: auto;
+}
+
+.agent-drafts-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.agent-drafts-title {
+    margin: 0;
+}
+
+.agent-drafts-badge {
+    font-size: 13px;
+    color: #666;
+    background-color: #eee;
+    padding: 4px 10px;
+    border-radius: 12px;
+}
+
+.agent-drafts-empty {
+    text-align: center;
+    padding: 40px 20px;
+    color: #777;
+}
+
+.agent-drafts-empty-title {
+    font-size: 16px;
+}
+
+.agent-drafts-empty-subtitle {
+    font-size: 13px;
+    color: #999;
+}
+
+.agent-drafts-list {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+/* Draft Card */
+
+.draft-card {
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 18px;
+    background-color: #fafafa;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+    display: flex;
+    flex-direction: column;
+}
+
+.draft-card-header {
+    border-bottom: 1px solid #eee;
+    padding-bottom: 10px;
+    margin-bottom: 12px;
+}
+
+.draft-card-title {
+    margin: 0;
+    color: #333;
+}
+
+.draft-card-subtitle {
+    font-size: 12px;
+    color: #777;
+}
+
+.draft-card-tasks {
+    max-height: 250px;
+    overflow-y: auto;
+    margin-bottom: 15px;
+    padding-right: 5px;
+}
+
+.draft-card-tasks-list {
+    list-style-type: none;
+    padding: 0;
+    margin: 0;
+}
+
+.draft-card-task-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 10px;
+    background-color: white;
+    border-radius: 5px;
+    margin-bottom: 6px;
+    border: 1px solid #eee;
+}
+
+.draft-task-edit-row {
+    display: flex;
+    flex-grow: 1;
+    gap: 6px;
+}
+
+.draft-task-edit-input {
+    flex-grow: 1;
+    padding: 4px 8px;
+    font-size: 13px;
+}
+
+.draft-task-save-btn {
+    padding: 4px 10px;
+    font-size: 12px;
+    background-color: #28a745;
+}
+
+.draft-task-cancel-btn {
+    padding: 4px 10px;
+    font-size: 12px;
+    background-color: #6c757d;
+}
+
+.draft-task-text {
+    font-size: 14px;
+    color: #333;
+    word-break: break-word;
+    margin-right: 10px;
+}
+
+.draft-task-actions {
+    display: flex;
+    gap: 4px;
+    flex-shrink: 0;
+}
+
+.draft-task-edit-btn {
+    padding: 4px 8px;
+    font-size: 12px;
+    background-color: #e9ecef;
+    color: #333;
+}
+
+.draft-task-del-btn {
+    padding: 4px 8px;
+    font-size: 12px;
+    background-color: #fee2e2;
+    color: #dc2626;
+}
+
+.draft-add-form {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.draft-add-input {
+    flex-grow: 1;
+    padding: 8px 12px;
+    font-size: 13px;
+    border-radius: 4px;
+    border: 1px solid #ccc;
+}
+
+.draft-add-btn {
+    padding: 8px 14px;
+    font-size: 13px;
+    background-color: #4b5563;
+}
+
+.draft-card-actions {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    padding-top: 12px;
+    border-top: 1px solid #eee;
+}
+
+.btn-decline {
+    background-color: #dc3545;
+    color: white;
+    border: none;
+    padding: 10px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.btn-approve {
+    background-color: #28a745;
+    color: white;
+    border: none;
+    padding: 10px 18px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: bold;
+}
 
 /* =====================
    WELCOME PAGE
@@ -215,13 +727,11 @@ textarea {
     font-size: 16px;
 }
 
-
 /* =====================
-   MOBILE
+   MOBILE RESPONSIVE
 ===================== */
 
-@media (max-width: 600px) {
-
+@media (max-width: 768px) {
     .navbar {
         flex-direction: column;
         gap: 15px;
@@ -241,105 +751,352 @@ textarea {
         flex-direction: column;
     }
 
-    .todo-content {
-        flex-direction: column;
-        align-items: flex-start;
-    }
-
-    .todo-actions {
-        flex-wrap: wrap;
-    }
-
-    .edit-container {
-        flex-direction: column;
+    .agent-chat-column,
+    .agent-drafts-column {
+        height: auto;
+        min-height: 400px;
     }
 }
 
-/* =====================
-   AI AGENT
-===================== */
+/* =========================
+   CHECKLIST WRAPPER
+========================= */
 
-.agent-page {
-    min-height: calc(100vh - 70px);
-    display: flex;
-    justify-content: center;
-    align-items: flex-start;
-    padding: 60px 20px;
-}
-
-.agent-container {
-    width: 800px;
-    max-width: 100%;
-    padding: 40px;
-    background-color: white;
-    border-radius: 12px;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.08);
-}
-
-.agent-container h1 {
-    margin: 0 0 12px;
-    text-align: center;
-}
-
-.agent-description {
-    margin: 0 auto 30px;
-    max-width: 600px;
-    text-align: center;
-    line-height: 1.6;
-    color: #666;
-}
-
-.agent-form {
+.checklist-wrapper {
+    width: 300px;
     display: flex;
     flex-direction: column;
-    gap: 15px;
+    gap: 8px;
 }
 
-.agent-form textarea {
+
+/* =========================
+   CHECKLIST CARD
+========================= */
+
+.checklist-wrapper .checklist-card {
     width: 100%;
-    padding: 15px;
-    border: 1px solid #ccc;
-    border-radius: 8px;
-    font-family: Arial, sans-serif;
-    font-size: 16px;
-    line-height: 1.5;
-    resize: vertical;
-    box-sizing: border-box;
 }
 
-.agent-form textarea:focus {
-    outline: none;
-    border-color: #007bff;
-}
 
-.agent-form button {
-    align-self: center;
-    padding: 12px 25px;
-    border: none;
-    border-radius: 8px;
-    background-color: #333;
+/* =========================
+   DELETE BUTTON
+========================= */
+
+.checklist-delete-btn {
+    align-self: flex-end;
+    background-color: #dc3545;
     color: white;
-    font-size: 16px;
+    padding: 7px 12px;
+    font-size: 13px;
+    border: none;
+    border-radius: 5px;
     cursor: pointer;
 }
 
-.agent-form button:hover {
-    opacity: 0.8;
+.checklist-delete-btn:hover {
+    background-color: #bb2d3b;
 }
-.agent-result {
-    margin-top: 30px;
-    padding: 20px;
-    background-color: #f4f4f4;
+
+/* ============================================================
+   DASHBOARD AI ASSISTANT BUTTON & SLIDE-OUT DRAWER
+============================================================ */
+
+.dashboard-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.dashboard-agent-trigger-btn {
+    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+    color: #ffffff;
+    border: none;
+    padding: 10px 18px;
+    font-size: 14px;
+    font-weight: 600;
     border-radius: 8px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.25s ease;
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.35);
 }
 
-.agent-result h2 {
-    margin-top: 0;
+.dashboard-agent-trigger-btn:hover {
+    background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(99, 102, 241, 0.5);
 }
 
-.agent-result pre {
-    white-space: pre-wrap;
-    font-family: Arial, sans-serif;
-    line-height: 1.6;
+/* Floating Agent Button */
+.dashboard-floating-agent-btn {
+    position: fixed;
+    bottom: 28px;
+    right: 28px;
+    width: 54px;
+    height: 54px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+    color: white;
+    font-size: 24px;
+    border: none;
+    cursor: pointer;
+    box-shadow: 0 8px 24px rgba(99, 102, 241, 0.45);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 998;
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.dashboard-floating-agent-btn:hover {
+    transform: scale(1.1) rotate(10deg);
+    box-shadow: 0 10px 28px rgba(99, 102, 241, 0.6);
+}
+
+/* Overlay */
+.dashboard-drawer-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.25);
+    backdrop-filter: blur(2px);
+    z-index: 999;
+    animation: fadeInOverlay 0.25s ease;
+}
+
+@keyframes fadeInOverlay {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+/* Side Panel / Drawer */
+.dashboard-drawer {
+    position: fixed;
+    top: 0;
+    right: -420px;
+    width: 400px;
+    max-width: 90vw;
+    height: 100vh;
+    background: #ffffff;
+    box-shadow: -6px 0 24px rgba(0, 0, 0, 0.15);
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    transition: right 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+    font-family: inherit;
+}
+
+.dashboard-drawer.open {
+    right: 0;
+}
+
+/* Drawer Header */
+.dashboard-drawer-header {
+    padding: 16px 20px;
+    background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%);
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.dashboard-drawer-title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.drawer-sparkle-icon {
+    font-size: 22px;
+    background: rgba(255, 255, 255, 0.15);
+    padding: 6px 10px;
+    border-radius: 10px;
+}
+
+.dashboard-drawer-title h3 {
     margin: 0;
+    font-size: 16px;
+    font-weight: 700;
+    color: #ffffff;
+}
+
+.dashboard-drawer-title p {
+    margin: 2px 0 0 0;
+    font-size: 11px;
+    color: #cbd5e1;
+}
+
+.dashboard-drawer-close {
+    background: rgba(255, 255, 255, 0.15);
+    border: none;
+    color: #ffffff;
+    font-size: 16px;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+}
+
+.dashboard-drawer-close:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+/* Suggestion Chips */
+.dashboard-drawer-chips {
+    display: flex;
+    gap: 8px;
+    padding: 12px 16px;
+    overflow-x: auto;
+    background: #f8fafc;
+    border-bottom: 1px solid #e2e8f0;
+    scrollbar-width: thin;
+}
+
+.drawer-chip-btn {
+    white-space: nowrap;
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    color: #475569;
+    padding: 6px 12px;
+    border-radius: 16px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.drawer-chip-btn:hover:not(:disabled) {
+    background: #eff6ff;
+    color: #2563eb;
+    border-color: #93c5fd;
+}
+
+/* Messages Area */
+.dashboard-drawer-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    background: #f1f5f9;
+}
+
+.drawer-chat-bubble-wrapper {
+    display: flex;
+    width: 100%;
+}
+
+.drawer-chat-bubble-wrapper.user-wrapper {
+    justify-content: flex-end;
+}
+
+.drawer-chat-bubble-wrapper.assistant-wrapper {
+    justify-content: flex-start;
+}
+
+.drawer-chat-bubble {
+    max-width: 85%;
+    padding: 12px 14px;
+    border-radius: 14px;
+    font-size: 13.5px;
+    line-height: 1.5;
+    word-break: break-word;
+}
+
+.drawer-chat-bubble.user {
+    background: #4f46e5;
+    color: #ffffff;
+    border-bottom-right-radius: 4px;
+}
+
+.drawer-chat-bubble.assistant {
+    background: #ffffff;
+    color: #1e293b;
+    border: 1px solid #e2e8f0;
+    border-bottom-left-radius: 4px;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+}
+
+.drawer-bubble-text {
+    white-space: pre-wrap;
+}
+
+/* Loading Dots */
+.drawer-chat-bubble.loading {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 12px 18px;
+}
+
+.typing-dot {
+    width: 7px;
+    height: 7px;
+    background: #94a3b8;
+    border-radius: 50%;
+    animation: typingBounce 1.4s infinite ease-in-out both;
+}
+
+.typing-dot:nth-child(1) { animation-delay: -0.32s; }
+.typing-dot:nth-child(2) { animation-delay: -0.16s; }
+
+@keyframes typingBounce {
+    0%, 80%, 100% { transform: scale(0); }
+    40% { transform: scale(1); }
+}
+
+/* Input Form */
+.dashboard-drawer-input-form {
+    display: flex;
+    padding: 12px 16px;
+    gap: 8px;
+    background: #ffffff;
+    border-top: 1px solid #e2e8f0;
+}
+
+.dashboard-drawer-input-form input {
+    flex: 1;
+    padding: 10px 14px;
+    font-size: 13.5px;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.dashboard-drawer-input-form input:focus {
+    border-color: #6366f1;
+    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+}
+
+.dashboard-drawer-input-form button {
+    background: #4f46e5;
+    color: #ffffff;
+    border: none;
+    padding: 10px 16px;
+    font-size: 13px;
+    font-weight: 600;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.dashboard-drawer-input-form button:hover:not(:disabled) {
+    background: #4338ca;
+}
+
+.dashboard-drawer-input-form button:disabled {
+    background: #cbd5e1;
+    cursor: not-allowed;
 }

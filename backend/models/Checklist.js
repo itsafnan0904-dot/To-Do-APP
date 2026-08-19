@@ -7,13 +7,15 @@ const checklistSchema = new mongoose.Schema(
             required: true,
             trim: true,
         },
-        tasks: {
-            type: [String],
-            default: [],
-        },
+        tasks: [
+            {
+                title: { type: String, required: true },
+                completed: { type: Boolean, default: false }
+            }
+        ],
         status: {
             type: String,
-            enum: ["draft"],
+            enum: ["draft", "approved"],
             default: "draft",
         },
         user: {

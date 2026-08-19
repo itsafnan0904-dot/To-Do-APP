@@ -28,8 +28,8 @@ function ChecklistDetail({ id }) {
             });
 
             setChecklist(response.data.checklist);
-            setTasks(response.data.checklist.tasks);
-            setTitle(response.data.checklist.title);
+            setTasks(response.data.checklist.tasks || []);
+            setTitle(response.data.checklist.title || "");
             setLoading(false);
         } catch (error) {
             console.error("Error fetching checklist:", error);
@@ -58,7 +58,7 @@ function ChecklistDetail({ id }) {
     const handleUpdateTask = (idx) => {
         if (!editValue.trim()) return;
         const newTasks = [...tasks];
-        newTasks[idx] = editValue;
+        newTasks[idx] = { ...newTasks[idx], title: editValue.trim() };
         handleSave(newTasks);
         setEditingIdx(null);
     };
@@ -71,29 +71,48 @@ function ChecklistDetail({ id }) {
     const handleAddTask = (e) => {
         e.preventDefault();
         if (!newTask.trim()) return;
-        const newTasks = [...tasks, newTask];
+        const newTasks = [...tasks, { title: newTask.trim(), completed: false }];
         handleSave(newTasks);
         setNewTask("");
     };
 
-    const handleApprove = async () => {
+    const handleToggleTask = async (taskId, currentStatus) => {
         try {
             const token = localStorage.getItem("token");
-            await axios.post(
-                `http://localhost:5000/api/checklists/${id}/approve`,
-                {},
+            await axios.put(
+                `http://localhost:5000/api/checklists/${id}/tasks/${taskId}`,
+                { completed: !currentStatus },
                 { headers: { Authorization: `Bearer ${token}` } }
             );
-            alert("Checklist approved and tasks moved to your Todos!");
-            window.location.href = "/dashboard";
+
+            // Optimistic update
+            setTasks(tasks.map(t => t._id === taskId ? { ...t, completed: !currentStatus } : t));
         } catch (error) {
-            console.error("Error approving checklist:", error);
-            alert("Failed to approve checklist.");
+            console.error("Error toggling task:", error);
+            fetchChecklist();
         }
     };
 
-    const handleDecline = async () => {
-        if (!window.confirm("Are you sure you want to discard this checklist?")) return;
+    const handleMoveUp = (idx) => {
+        if (idx === 0) return;
+        const newTasks = [...tasks];
+        const temp = newTasks[idx];
+        newTasks[idx] = newTasks[idx - 1];
+        newTasks[idx - 1] = temp;
+        handleSave(newTasks);
+    };
+
+    const handleMoveDown = (idx) => {
+        if (idx === tasks.length - 1) return;
+        const newTasks = [...tasks];
+        const temp = newTasks[idx];
+        newTasks[idx] = newTasks[idx + 1];
+        newTasks[idx + 1] = temp;
+        handleSave(newTasks);
+    };
+
+    const handleDeleteChecklist = async () => {
+        if (!window.confirm("Are you sure you want to delete this entire checklist?")) return;
         try {
             const token = localStorage.getItem("token");
             await axios.delete(
@@ -102,78 +121,123 @@ function ChecklistDetail({ id }) {
             );
             window.location.href = "/dashboard";
         } catch (error) {
-            console.error("Error declining checklist:", error);
-            alert("Failed to discard checklist.");
+            console.error("Error deleting checklist:", error);
+            alert("Failed to delete checklist.");
         }
     };
 
-    if (loading) return <div><Navbar /><div style={{ padding: '20px' }}>Loading...</div></div>;
+    if (loading) {
+        return (
+            <div>
+                <Navbar />
+                <div className="loading-container">Loading...</div>
+            </div>
+        );
+    }
+
+    const totalTasks = tasks.length;
+    const completedTasks = tasks.filter(t => t.completed).length;
 
     return (
         <div>
             <Navbar />
-            <div className="dashboard-container" style={{ maxWidth: '800px', margin: '0 auto', padding: '20px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                    <div style={{ flexGrow: 1 }}>
+            <div className="checklist-detail-container">
+                <div className="checklist-detail-header">
+                    <div className="checklist-title-wrapper">
                         <input
                             type="text"
                             value={title}
                             onChange={(e) => setTitle(e.target.value)}
                             onBlur={() => handleSave(tasks, title)}
-                            style={{ fontSize: '24px', fontWeight: 'bold', border: '1px solid transparent', padding: '5px', width: '100%', borderRadius: '4px' }}
+                            className="checklist-title-input"
                             placeholder="Checklist Title"
                         />
-                    </div>
-                    <div>
-                        <button onClick={handleDecline} style={{ backgroundColor: '#dc3545', color: 'white', marginRight: '10px' }}>Decline (Discard)</button>
-                        <button onClick={handleApprove} style={{ backgroundColor: '#28a745', color: 'white' }}>Approve Checklist</button>
+                        <p className="checklist-card-meta">
+                            {completedTasks} of {totalTasks} tasks completed
+                        </p>
                     </div>
                 </div>
 
-                <div style={{ backgroundColor: '#f9f9f9', padding: '20px', borderRadius: '8px', border: '1px solid #ddd' }}>
-                    <h3 style={{ marginTop: 0 }}>Review Tasks</h3>
-                    
-                    <ul style={{ listStyleType: 'none', padding: 0 }}>
-                        {tasks.map((task, idx) => (
-                            <li key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px', borderBottom: '1px solid #eee' }}>
-                                {editingIdx === idx ? (
-                                    <div style={{ display: 'flex', flexGrow: 1, gap: '10px' }}>
-                                        <input 
-                                            type="text" 
-                                            value={editValue} 
-                                            onChange={(e) => setEditValue(e.target.value)}
-                                            style={{ flexGrow: 1, padding: '5px' }}
-                                        />
-                                        <button onClick={() => handleUpdateTask(idx)}>Save</button>
-                                        <button onClick={() => setEditingIdx(null)}>Cancel</button>
-                                    </div>
-                                ) : (
-                                    <>
-                                        <span style={{ flexGrow: 1 }}>{task}</span>
-                                        <div>
-                                            <button onClick={() => { setEditingIdx(idx); setEditValue(task); }} style={{ marginRight: '5px' }}>Edit</button>
-                                            <button onClick={() => handleDeleteTask(idx)} style={{ backgroundColor: '#dc3545', color: 'white' }}>Delete</button>
+                <div className="checklist-tasks-panel">
+                    {tasks.length === 0 ? (
+                        <p className="checklist-card-meta">No tasks yet. Add one below!</p>
+                    ) : (
+                        <ul className="checklist-tasks-list">
+                            {tasks.map((task, idx) => (
+                                <li key={task._id || idx} className="checklist-detail-task-item">
+                                    {editingIdx === idx ? (
+                                        <div className="edit-container">
+                                            <input
+                                                type="text"
+                                                value={editValue}
+                                                onChange={(e) => setEditValue(e.target.value)}
+                                                autoFocus
+                                            />
+                                            <button onClick={() => handleUpdateTask(idx)}>Save</button>
+                                            <button onClick={() => setEditingIdx(null)}>Cancel</button>
                                         </div>
-                                    </>
-                                )}
-                            </li>
-                        ))}
-                    </ul>
+                                    ) : (
+                                        <>
+                                            <div className="checklist-task-main">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={task.completed}
+                                                    onChange={() => handleToggleTask(task._id, task.completed)}
+                                                    className="checklist-task-checkbox"
+                                                />
+                                                <span className={`checklist-task-title ${task.completed ? 'completed' : ''}`}>
+                                                    {task.title}
+                                                </span>
+                                            </div>
+                                            <div className="todo-actions">
+                                                <button
+                                                    onClick={() => { setEditingIdx(idx); setEditValue(task.title); }}
+                                                    className="checklist-task-edit-btn"
+                                                >
+                                                    Edit
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDeleteTask(idx)}
+                                                    className="checklist-task-delete-btn"
+                                                >
+                                                    ✕
+                                                </button>
+                                                <button
+                                                    onClick={() => handleMoveUp(idx)}
+                                                    disabled={idx === 0}
+                                                    title="Move Up"
+                                                >
+                                                    ↑
+                                                </button>
+                                                <button
+                                                    onClick={() => handleMoveDown(idx)}
+                                                    disabled={idx === tasks.length - 1}
+                                                    title="Move Down"
+                                                >
+                                                    ↓
+                                                </button>
+                                            </div>
+                                        </>
+                                    )}
+                                </li>
+                            ))}
+                        </ul>
+                    )}
 
-                    <form onSubmit={handleAddTask} style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
+                    <form onSubmit={handleAddTask} className="checklist-detail-add-form">
                         <input
                             type="text"
                             value={newTask}
                             onChange={(e) => setNewTask(e.target.value)}
-                            placeholder="Add another task..."
-                            style={{ flexGrow: 1, padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}
+                            placeholder="Add a new task..."
+                            className="checklist-detail-add-input"
                         />
-                        <button type="submit">Add Task</button>
+                        <button type="submit">+ Add Task</button>
                     </form>
                 </div>
-                
-                <div style={{ marginTop: '20px' }}>
-                    <a href="/dashboard" style={{ color: '#007bff', textDecoration: 'none' }}>&larr; Back to Dashboard</a>
+
+                <div className="checklist-back-link-wrapper">
+                    <a href="/dashboard" className="checklist-back-link">&larr; Back to Dashboard</a>
                 </div>
             </div>
         </div>
