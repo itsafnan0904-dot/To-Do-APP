@@ -1,5 +1,25 @@
 import React, { useState, useRef, useEffect } from "react";
 import axios from "axios";
+import {
+  Drawer,
+  Box,
+  Typography,
+  IconButton,
+  TextField,
+  Button,
+  Chip,
+  Paper,
+  Stack,
+  CircularProgress,
+  Avatar,
+} from "@mui/material";
+import {
+  Close as CloseIcon,
+  Send as SendIcon,
+  AutoAwesome as AutoAwesomeIcon,
+  SmartToy as SmartToyIcon,
+  Person as PersonIcon,
+} from "@mui/icons-material";
 
 function DashboardAgentDrawer({ isOpen, onClose }) {
   const [messages, setMessages] = useState([
@@ -78,98 +98,222 @@ function DashboardAgentDrawer({ isOpen, onClose }) {
   };
 
   return (
-    <>
-      {/* Drawer Overlay (clicks outside to close) */}
-      {isOpen && (
-        <div className="dashboard-drawer-overlay" onClick={onClose} />
-      )}
-
-      {/* Slide-out Drawer Panel */}
-      <div className={`dashboard-drawer ${isOpen ? "open" : ""}`}>
-        {/* Header */}
-        <div className="dashboard-drawer-header">
-          <div className="dashboard-drawer-title">
-            <span className="drawer-sparkle-icon">✨</span>
-            <div>
-              <h3>Task Assistant</h3>
-              <p>AI Task Filter & Analytics</p>
-            </div>
-          </div>
-          <button
-            className="dashboard-drawer-close"
-            onClick={onClose}
-            aria-label="Close Assistant"
+    <Drawer
+      anchor="right"
+      open={isOpen}
+      onClose={onClose}
+      PaperProps={{
+        sx: {
+          width: { xs: "100%", sm: 440 },
+          p: 0,
+          display: "flex",
+          flexDirection: "column",
+          bgcolor: "background.paper",
+        },
+      }}
+    >
+      {/* Header */}
+      <Box
+        sx={{
+          p: 2.5,
+          borderBottom: "1px solid",
+          borderColor: "divider",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          bgcolor: "background.default",
+        }}
+      >
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+          <Box
+            sx={{
+              width: 40,
+              height: 40,
+              borderRadius: "10px",
+              background: "linear-gradient(135deg, #6366f1 0%, #ec4899 100%)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "#fff",
+            }}
           >
-            ✕
-          </button>
-        </div>
+            <AutoAwesomeIcon fontSize="small" />
+          </Box>
+          <Box>
+            <Typography variant="subtitle1" fontWeight={700} lineHeight={1.2}>
+              Task Assistant
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              AI Task Filter & Analytics
+            </Typography>
+          </Box>
+        </Box>
+        <IconButton onClick={onClose} size="small">
+          <CloseIcon fontSize="small" />
+        </IconButton>
+      </Box>
 
-        {/* Quick Prompts */}
-        <div className="dashboard-drawer-chips">
+      {/* Quick Suggestion Chips */}
+      <Box sx={{ p: 2, bgcolor: "background.default", borderBottom: "1px solid", borderColor: "divider" }}>
+        <Typography variant="caption" fontWeight={700} color="text.secondary" sx={{ display: "block", mb: 1 }}>
+          QUICK ACTIONS
+        </Typography>
+        <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
           {quickPrompts.map((prompt, idx) => (
-            <button
+            <Chip
               key={idx}
-              className="drawer-chip-btn"
+              label={prompt}
               onClick={() => handleSendMessage(prompt)}
               disabled={loading}
-            >
-              {prompt}
-            </button>
+              clickable
+              size="small"
+              sx={{
+                borderRadius: 2,
+                bgcolor: "background.paper",
+                border: "1px solid",
+                borderColor: "divider",
+                "&:hover": { bgcolor: "primary.light", color: "white" },
+              }}
+            />
           ))}
-        </div>
+        </Box>
+      </Box>
 
-        {/* Chat History */}
-        <div className="dashboard-drawer-messages">
-          {messages.map((msg, index) => (
-            <div
+      {/* Messages Scroll Area */}
+      <Box
+        sx={{
+          flexGrow: 1,
+          p: 2.5,
+          overflowY: "auto",
+          display: "flex",
+          flexDirection: "column",
+          gap: 2,
+        }}
+      >
+        {messages.map((msg, index) => {
+          const isUser = msg.role === "user";
+          return (
+            <Box
               key={index}
-              className={`drawer-chat-bubble-wrapper ${
-                msg.role === "user" ? "user-wrapper" : "assistant-wrapper"
-              }`}
+              sx={{
+                display: "flex",
+                justifyContent: isUser ? "flex-end" : "flex-start",
+                gap: 1.5,
+              }}
             >
-              <div
-                className={`drawer-chat-bubble ${
-                  msg.role === "user" ? "user" : "assistant"
-                }`}
+              {!isUser && (
+                <Avatar
+                  sx={{
+                    width: 32,
+                    height: 32,
+                    bgcolor: "primary.main",
+                    fontSize: "0.85rem",
+                  }}
+                >
+                  <SmartToyIcon sx={{ fontSize: 18 }} />
+                </Avatar>
+              )}
+              <Paper
+                elevation={0}
+                sx={{
+                  p: 2,
+                  maxWidth: "80%",
+                  borderRadius: 3,
+                  bgcolor: isUser ? "primary.main" : "background.default",
+                  color: isUser ? "#fff" : "text.primary",
+                  border: isUser ? "none" : "1px solid",
+                  borderColor: "divider",
+                  borderTopRightRadius: isUser ? 2 : 16,
+                  borderTopLeftRadius: !isUser ? 2 : 16,
+                }}
               >
-                <div className="drawer-bubble-text">{msg.content}</div>
-              </div>
-            </div>
-          ))}
+                <Typography variant="body2" sx={{ whiteSpace: "pre-wrap", lineHeight: 1.5 }}>
+                  {msg.content}
+                </Typography>
+              </Paper>
+              {isUser && (
+                <Avatar
+                  sx={{
+                    width: 32,
+                    height: 32,
+                    bgcolor: "secondary.main",
+                    fontSize: "0.85rem",
+                  }}
+                >
+                  <PersonIcon sx={{ fontSize: 18 }} />
+                </Avatar>
+              )}
+            </Box>
+          );
+        })}
 
-          {loading && (
-            <div className="drawer-chat-bubble-wrapper assistant-wrapper">
-              <div className="drawer-chat-bubble assistant loading">
-                <span className="typing-dot"></span>
-                <span className="typing-dot"></span>
-                <span className="typing-dot"></span>
-              </div>
-            </div>
-          )}
-          <div ref={messagesEndRef} />
-        </div>
+        {loading && (
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+            <Avatar sx={{ width: 32, height: 32, bgcolor: "primary.main" }}>
+              <SmartToyIcon sx={{ fontSize: 18 }} />
+            </Avatar>
+            <Paper
+              elevation={0}
+              sx={{
+                p: 2,
+                borderRadius: 3,
+                bgcolor: "background.default",
+                border: "1px solid",
+                borderColor: "divider",
+                display: "flex",
+                alignItems: "center",
+                gap: 1,
+              }}
+            >
+              <CircularProgress size={16} />
+              <Typography variant="body2" color="text.secondary">
+                Analyzing your checklist data...
+              </Typography>
+            </Paper>
+          </Box>
+        )}
+        <div ref={messagesEndRef} />
+      </Box>
 
-        {/* Input Bar */}
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            handleSendMessage();
+      {/* Input Footer */}
+      <Box
+        component="form"
+        onSubmit={(e) => {
+          e.preventDefault();
+          handleSendMessage();
+        }}
+        sx={{
+          p: 2,
+          borderTop: "1px solid",
+          borderColor: "divider",
+          bgcolor: "background.paper",
+          display: "flex",
+          gap: 1,
+        }}
+      >
+        <TextField
+          fullWidth
+          size="small"
+          placeholder="Ask about tasks or checklists..."
+          value={inputMessage}
+          onChange={(e) => setInputMessage(e.target.value)}
+          disabled={loading}
+          sx={{
+            "& .MuiOutlinedInput-root": {
+              borderRadius: 3,
+            },
           }}
-          className="dashboard-drawer-input-form"
+        />
+        <Button
+          type="submit"
+          variant="contained"
+          disabled={loading || !inputMessage.trim()}
+          sx={{ minWidth: 48, px: 2, borderRadius: 3 }}
         >
-          <input
-            type="text"
-            placeholder="Ask about tasks, priorities, progress..."
-            value={inputMessage}
-            onChange={(e) => setInputMessage(e.target.value)}
-            disabled={loading}
-          />
-          <button type="submit" disabled={loading || !inputMessage.trim()}>
-            Send
-          </button>
-        </form>
-      </div>
-    </>
+          <SendIcon fontSize="small" />
+        </Button>
+      </Box>
+    </Drawer>
   );
 }
 
