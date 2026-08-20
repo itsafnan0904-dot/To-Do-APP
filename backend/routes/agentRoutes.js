@@ -16,6 +16,12 @@ const client = new OpenAI({
 
 import Checklist from "../models/Checklist.js";
 
+const normalizePriority = (val) => {
+  const p = (val || "").toString().toLowerCase().trim();
+  if (["low", "medium", "high"].includes(p)) return p;
+  return "medium";
+};
+
 // ============================================================
 // CONVERSATIONAL AI CHECKLIST GENERATOR
 // ============================================================
@@ -33,23 +39,33 @@ router.post("/", authMiddleware, async (req, res) => {
       content: `You are an expert AI Checklist Architect. You help users structure and plan projects, routines, and workflows into clear checklists.
 Converse naturally and concisely with the user to understand what they need. Ask clarifying questions if necessary.
 
-When you are ready to generate a checklist, provide a brief, friendly message formatted in clean Markdown (using bold text and clear bullet points), AND append a JSON code block in this exact format:
+When you are ready to generate a checklist, provide ONLY a short, friendly, and helpful message (e.g., "I've created your checklist with customized priorities and placed it in the **Pending Drafts** panel. You can review the tasks and adjust priorities before approving it.") AND append the JSON code block in this exact format:
 
 \`\`\`json
 {
   "title": "A short, descriptive title",
+  "priority": "high",
   "tasks": [
-    "First actionable step",
-    "Second actionable step",
-    "Third actionable step"
+    {
+      "title": "First actionable step",
+      "priority": "high"
+    },
+    {
+      "title": "Second actionable step",
+      "priority": "medium"
+    },
+    {
+      "title": "Third actionable step",
+      "priority": "low"
+    }
   ]
 }
 \`\`\`
 
-IMPORTANT INSTRUCTIONS:
-1. Whenever you generate a checklist, always mention in your response: "Your new checklist is ready in the **Pending Drafts** section on the right! You can review, edit, or approve it whenever you're ready."
-2. Keep your conversational responses formatted with clean markdown, bullet points, and bold emphasis where helpful.
-3. Only include the \`\`\`json ... \`\`\` block when you are outputting the final tasks.`,
+CRITICAL RULES:
+1. Do NOT repeat or list the generated tasks or task descriptions in your conversational text. All tasks must reside strictly inside the JSON block so they only show up in the Pending Drafts card.
+2. Priority values for the checklist and every task MUST be strictly one of: "low", "medium", or "high".
+3. Keep your conversational responses concise, formatted in clean markdown.`,
     };
 
     const apiMessages = [
@@ -65,30 +81,51 @@ IMPORTANT INSTRUCTIONS:
       messages: apiMessages,
     });
 
-    const answer = response.choices[0].message.content;
+    const rawAnswer = response.choices[0].message.content;
 
     // Check if there is a JSON block
-    // Match ```json ... ``` or ``` { ... } ``` or raw JSON
-    let jsonMatch = answer.match(/```json\s*([\s\S]*?)\s*```/);
+    let jsonMatch = rawAnswer.match(/```json\s*([\s\S]*?)\s*```/);
     if (!jsonMatch) {
-      jsonMatch = answer.match(/```\s*(\{[\s\S]*?\})\s*```/);
+      jsonMatch = rawAnswer.match(/```\s*(\{[\s\S]*?\})\s*```/);
     }
 
     let checklistData = null;
     let draftChecklist = null;
+    let cleanMessage = rawAnswer;
 
     if (jsonMatch) {
+      // Strip out the JSON code block from the message displayed in chat
+      cleanMessage = rawAnswer.replace(/```json[\s\S]*?```/gi, "").replace(/```[\s\S]*?```/gi, "").trim();
+      if (!cleanMessage) {
+        cleanMessage = "Your checklist is ready in the **Pending Drafts** panel. You can review the tasks, adjust priorities, and edit details before approving.";
+      }
+
       try {
         checklistData = JSON.parse(jsonMatch[1]);
 
         if (checklistData && (checklistData.tasks || checklistData.title)) {
+          // Normalize tasks
+          const rawTasks = Array.isArray(checklistData.tasks) ? checklistData.tasks : [];
+          const tasks = rawTasks.map((item) => {
+            if (typeof item === "string") {
+              return {
+                title: item,
+                completed: false,
+                priority: "medium",
+              };
+            }
+            return {
+              title: item.title || "Task",
+              completed: false,
+              priority: normalizePriority(item.priority),
+            };
+          });
+
           // Create draft checklist in database
           draftChecklist = await Checklist.create({
             title: checklistData.title || "Generated Checklist",
-            tasks: (checklistData.tasks || []).map((taskTitle) => ({
-              title: typeof taskTitle === "string" ? taskTitle : taskTitle.title || "Task",
-              completed: false,
-            })),
+            priority: normalizePriority(checklistData.priority),
+            tasks,
             user: req.user.userId,
             status: "draft",
           });
@@ -99,7 +136,7 @@ IMPORTANT INSTRUCTIONS:
     }
 
     res.status(200).json({
-      message: answer,
+      message: cleanMessage,
       checklist: draftChecklist,
     });
   } catch (error) {
@@ -133,9 +170,9 @@ router.post("/dashboard-assistant", authMiddleware, async (req, res) => {
         const completed = cl.tasks?.filter((t) => t.completed).length || 0;
         const pending = total - completed;
         const taskList = (cl.tasks || [])
-          .map((t) => `- [${t.completed ? "x" : " "}] ${t.title}`)
+          .map((t) => `- [${t.completed ? "x" : " "}] (${t.priority || "medium"}) ${t.title}`)
           .join("\n  ");
-        return `Checklist #${idx + 1}: "${cl.title}" (Status: ${cl.status})
+        return `Checklist #${idx + 1}: "${cl.title}" (Priority: ${cl.priority || "medium"}, Status: ${cl.status})
 - Progress: ${completed}/${total} completed (${pending} pending)
 - Tasks:
   ${taskList || "(No tasks)"}`;
@@ -156,30 +193,7 @@ YOUR CAPABILITIES & GUIDELINES:
 3. Analytical & Prioritization Queries:
    - Identify which checklist has the most pending tasks.
    - Identify which checklist is closest to completion.
-   - Suggest what to prioritize based on pending items and completion progress.
-4. Strict Guardrails:
-   - Strictly base all factual answers regarding checklists and tasks only on the provided user data.
-   - Do not make up non-existent tasks or checklists.
-
-STRICT BOLD & HUMAN-FRIENDLY FORMATTING DIRECTIVE:
-- ALWAYS wrap **all checklist names**, **metric labels**, and **percentages** in double asterisks (**like this**).
-- NEVER use the tilde symbol ("~") or math symbols ("÷"). Use "about" or "out of".
-- NEVER use index numbers like "#4". Always use the full bolded checklist title.
-- Do NOT add intro filler sentences like "You're looking at...". Jump directly to the bold title.
-
-MANDATORY OUTPUT FORMAT:
-
-**"[Checklist Name]" Checklist** (about **[X]%** Complete)
-
-- **Total tasks:** [Number]
-- **Completed tasks:** [Number]
-- **Progress:** [Number] out of [Number] completed (about **[X]%**)
-
-**Comparison:**
-- The **"[Other Checklist Name]" Checklist** is about **[X]%** complete.
-
-**Summary:**
-- [1-2 bold-highlighted sentences summarizing status and next steps]`,
+   - Suggest what to prioritize based on pending items, priority levels ("high", "medium", "low"), and completion progress.`,
     };
     const apiMessages = [
       systemMessage,
