@@ -36,13 +36,16 @@ import {
   FilterList as FilterListIcon,
   Clear as ClearIcon,
 } from "@mui/icons-material";
+import { getPriorityBadgeProps } from "../utils/priority";
 
 function Dashboard() {
   const navigate = useNavigate();
   const [approvedChecklists, setApprovedChecklists] = useState([]);
   const [newChecklistTitle, setNewChecklistTitle] = useState("");
+  const [newChecklistPriority, setNewChecklistPriority] = useState("medium");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all"); // "all", "completed", "in-progress", "empty"
+  const [priorityFilter, setPriorityFilter] = useState("all"); // "all", "high", "medium", "low"
   const [loading, setLoading] = useState(true);
   const [openCreateModal, setOpenCreateModal] = useState(false);
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
@@ -94,6 +97,7 @@ function Dashboard() {
         "http://localhost:5000/api/checklists",
         {
           title: newChecklistTitle.trim(),
+          priority: newChecklistPriority || "medium",
           status: "approved",
           tasks: [],
         },
@@ -106,6 +110,7 @@ function Dashboard() {
 
       setApprovedChecklists([response.data.checklist, ...approvedChecklists]);
       setNewChecklistTitle("");
+      setNewChecklistPriority("medium");
       setOpenCreateModal(false);
     } catch (error) {
       console.error("Error creating checklist:", error);
@@ -191,8 +196,7 @@ function Dashboard() {
       : 0;
 
   // =========================
-  // PURE CLIENT-SIDE SEARCH & STATUS FILTERING (NO AI)
-  // Matches query against checklist title OR individual task titles
+  // CLIENT-SIDE SEARCH, STATUS & PRIORITY FILTERING
   // =========================
   const filteredChecklists = approvedChecklists.filter((cl) => {
     const query = search.toLowerCase().trim();
@@ -213,7 +217,13 @@ function Dashboard() {
     if (statusFilter === "in-progress") matchesStatus = isInProgress;
     if (statusFilter === "empty") matchesStatus = isEmpty;
 
-    return matchesSearch && matchesStatus;
+    let matchesPriority = true;
+    if (priorityFilter !== "all") {
+      const clPriority = (cl.priority || "medium").toLowerCase();
+      matchesPriority = clPriority === priorityFilter.toLowerCase();
+    }
+
+    return matchesSearch && matchesStatus && matchesPriority;
   });
 
   return (
@@ -360,7 +370,7 @@ function Dashboard() {
           </Grid>
         </Paper>
 
-        {/* Filter / Search Bar (Pure Search & Filter with NO AI) */}
+        {/* Filter / Search Bar (Search + Status + Priority Filter) */}
         <Paper
           elevation={0}
           sx={{
@@ -371,11 +381,12 @@ function Dashboard() {
             borderColor: "divider",
             bgcolor: "background.paper",
             display: "flex",
-            flexDirection: { xs: "column", sm: "row" },
+            flexDirection: { xs: "column", md: "row" },
             alignItems: "center",
             gap: 2,
           }}
         >
+          {/* Text search */}
           <TextField
             fullWidth
             size="small"
@@ -398,12 +409,13 @@ function Dashboard() {
             }}
           />
 
-          <FormControl size="small" sx={{ minWidth: { xs: "100%", sm: 180 } }}>
-            <InputLabel id="filter-status-label">Filter by Status</InputLabel>
+          {/* Status Filter */}
+          <FormControl size="small" sx={{ minWidth: { xs: "100%", sm: 160 } }}>
+            <InputLabel id="filter-status-label">Status</InputLabel>
             <Select
               labelId="filter-status-label"
               value={statusFilter}
-              label="Filter by Status"
+              label="Status"
               onChange={(e) => setStatusFilter(e.target.value)}
               startAdornment={
                 <InputAdornment position="start">
@@ -411,15 +423,31 @@ function Dashboard() {
                 </InputAdornment>
               }
             >
-              <MenuItem value="all">All Checklists</MenuItem>
+              <MenuItem value="all">All Statuses</MenuItem>
               <MenuItem value="completed">Completed</MenuItem>
               <MenuItem value="in-progress">In Progress</MenuItem>
               <MenuItem value="empty">Empty</MenuItem>
             </Select>
           </FormControl>
+
+          {/* Priority Filter */}
+          <FormControl size="small" sx={{ minWidth: { xs: "100%", sm: 160 } }}>
+            <InputLabel id="filter-priority-label">Priority</InputLabel>
+            <Select
+              labelId="filter-priority-label"
+              value={priorityFilter}
+              label="Priority"
+              onChange={(e) => setPriorityFilter(e.target.value)}
+            >
+              <MenuItem value="all">All Priorities</MenuItem>
+              <MenuItem value="high">High Priority</MenuItem>
+              <MenuItem value="medium">Medium Priority</MenuItem>
+              <MenuItem value="low">Low Priority</MenuItem>
+            </Select>
+          </FormControl>
         </Paper>
 
-        {/* Checklists Grid */}
+        {/* Checklists Grid with Identical-Size Cards */}
         {loading ? (
           <Box sx={{ display: "flex", justifyContent: "center", py: 8 }}>
             <CircularProgress />
@@ -438,21 +466,22 @@ function Dashboard() {
           >
             <ListAltIcon sx={{ fontSize: 64, color: "text.secondary", mb: 2, opacity: 0.5 }} />
             <Typography variant="h6" fontWeight={700} gutterBottom>
-              {search || statusFilter !== "all"
+              {search || statusFilter !== "all" || priorityFilter !== "all"
                 ? "No checklists match your search/filter."
                 : "No checklists created yet"}
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 450, mx: "auto", mb: 3 }}>
-              {search || statusFilter !== "all"
-                ? "Try clearing your search query or reset the status filter."
+              {search || statusFilter !== "all" || priorityFilter !== "all"
+                ? "Try clearing your search query or reset the filters."
                 : "Get started by creating your first checklist above!"}
             </Typography>
-            {search || statusFilter !== "all" ? (
+            {search || statusFilter !== "all" || priorityFilter !== "all" ? (
               <Button
                 variant="outlined"
                 onClick={() => {
                   setSearch("");
                   setStatusFilter("all");
+                  setPriorityFilter("all");
                 }}
               >
                 Reset Filters
@@ -469,192 +498,20 @@ function Dashboard() {
           </Paper>
         ) : (
           <Grid container spacing={3}>
-            {filteredChecklists.map((checklist) => {
-              const totalTasks = checklist.tasks?.length || 0;
-              const completedTasks =
-                checklist.tasks?.filter((t) => t.completed).length || 0;
-              const isAllCompleted =
-                totalTasks > 0 && completedTasks === totalTasks;
-              const progressPercentage =
-                totalTasks > 0
-                  ? Math.round((completedTasks / totalTasks) * 100)
-                  : 0;
-
-              return (
-                <Grid item xs={12} sm={6} md={4} key={checklist._id}>
-                  <Card
-                    elevation={0}
-                    sx={{
-                      height: "100%",
-                      display: "flex",
-                      flexDirection: "column",
-                      borderRadius: 3.5,
-                      border: "1px solid",
-                      borderColor: isAllCompleted ? "success.light" : "divider",
-                      transition: "all 0.2s ease-in-out",
-                      bgcolor: isAllCompleted ? "#f0fdf4" : "background.paper",
-                      "&:hover": {
-                        transform: "translateY(-3px)",
-                        boxShadow: "0 12px 24px -5px rgba(0,0,0,0.08)",
-                      },
-                    }}
-                  >
-                    <CardActionArea
-                      onClick={() => navigate(`/checklist/${checklist._id}`)}
-                      sx={{
-                        flexGrow: 1,
-                        p: 2.5,
-                        display: "flex",
-                        flexDirection: "column",
-                        alignItems: "stretch",
-                      }}
-                    >
-                      {/* Top Row */}
-                      <Box
-                        sx={{
-                          display: "flex",
-                          alignItems: "flex-start",
-                          justifyContent: "space-between",
-                          mb: 1.5,
-                        }}
-                      >
-                        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                          <Checkbox
-                            checked={isAllCompleted}
-                            disabled={totalTasks === 0}
-                            onChange={(e) => {
-                              e.stopPropagation();
-                              handleToggleAllTasks(checklist, isAllCompleted);
-                            }}
-                            onClick={(e) => e.stopPropagation()}
-                            color="success"
-                            sx={{ p: 0.5 }}
-                          />
-                          <Typography
-                            variant="h6"
-                            fontWeight={700}
-                            sx={{
-                              textDecoration: isAllCompleted ? "line-through" : "none",
-                              color: isAllCompleted ? "text.secondary" : "text.primary",
-                              wordBreak: "break-word",
-                            }}
-                          >
-                            {checklist.title}
-                          </Typography>
-                        </Box>
-                      </Box>
-
-                      {/* Progress Meta */}
-                      <Box sx={{ mb: 2 }}>
-                        <Box sx={{ display: "flex", justifyContent: "space-between", mb: 0.5 }}>
-                          <Typography variant="caption" color="text.secondary" fontWeight={600}>
-                            {completedTasks} / {totalTasks} Tasks Completed
-                          </Typography>
-                          <Typography
-                            variant="caption"
-                            fontWeight={700}
-                            color={isAllCompleted ? "success.main" : "primary.main"}
-                          >
-                            {progressPercentage}%
-                          </Typography>
-                        </Box>
-                        <LinearProgress
-                          variant="determinate"
-                          value={progressPercentage}
-                          sx={{
-                            height: 6,
-                            borderRadius: 3,
-                            bgcolor: isAllCompleted ? "#bbf7d0" : "#e2e8f0",
-                            "& .MuiLinearProgress-bar": {
-                              bgcolor: isAllCompleted ? "#10b981" : "primary.main",
-                              borderRadius: 3,
-                            },
-                          }}
-                        />
-                      </Box>
-
-                      {/* Task preview items */}
-                      <Box sx={{ flexGrow: 1, mb: 1 }}>
-                        {totalTasks === 0 ? (
-                          <Typography variant="body2" color="text.secondary" sx={{ fontStyle: "italic" }}>
-                            Empty checklist. Click to add tasks.
-                          </Typography>
-                        ) : (
-                          <Stack spacing={0.75}>
-                            {checklist.tasks.slice(0, 3).map((task, idx) => (
-                              <Box
-                                key={task._id || idx}
-                                sx={{
-                                  display: "flex",
-                                  alignItems: "center",
-                                  gap: 1,
-                                  fontSize: "0.85rem",
-                                  color: task.completed ? "text.secondary" : "text.primary",
-                                  textDecoration: task.completed ? "line-through" : "none",
-                                }}
-                              >
-                                <Box
-                                  sx={{
-                                    width: 6,
-                                    height: 6,
-                                    borderRadius: "50%",
-                                    bgcolor: task.completed ? "success.main" : "primary.light",
-                                  }}
-                                />
-                                <Typography variant="body2" noWrap sx={{ fontSize: "0.875rem" }}>
-                                  {task.title}
-                                </Typography>
-                              </Box>
-                            ))}
-                            {totalTasks > 3 && (
-                              <Typography variant="caption" color="text.secondary" fontWeight={600}>
-                                + {totalTasks - 3} more items...
-                              </Typography>
-                            )}
-                          </Stack>
-                        )}
-                      </Box>
-                    </CardActionArea>
-
-                    {/* Card Footer Actions */}
-                    <Box
-                      sx={{
-                        p: 1.5,
-                        px: 2.5,
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                        borderTop: "1px solid",
-                        borderColor: isAllCompleted ? "#dcfce7" : "divider",
-                      }}
-                    >
-                      <Button
-                        size="small"
-                        color="primary"
-                        onClick={() => navigate(`/checklist/${checklist._id}`)}
-                      >
-                        Manage
-                      </Button>
-                      <IconButton
-                        size="small"
-                        color="error"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setDeleteConfirmId(checklist._id);
-                        }}
-                      >
-                        <DeleteIcon fontSize="small" />
-                      </IconButton>
-                    </Box>
-                  </Card>
-                </Grid>
-              );
-            })}
+            {filteredChecklists.map((checklist) => (
+              <Grid item xs={12} sm={6} md={4} key={checklist._id}>
+                <DashboardChecklistCard
+                  checklist={checklist}
+                  onToggleAllTasks={handleToggleAllTasks}
+                  onDelete={(id) => setDeleteConfirmId(id)}
+                />
+              </Grid>
+            ))}
           </Grid>
         )}
       </Container>
 
-      {/* Create Checklist Dialog */}
+      {/* Create Checklist Dialog with Low/Medium/High Priority Selector */}
       <Dialog
         open={openCreateModal}
         onClose={() => setOpenCreateModal(false)}
@@ -664,19 +521,36 @@ function Dashboard() {
       >
         <DialogTitle fontWeight={700}>Create New Checklist</DialogTitle>
         <DialogContent>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            Give your new checklist a clear title (e.g., "Marketing Sprint", "Grocery List", "Study Plan").
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2.5 }}>
+            Give your new checklist a clear title and assign a priority level.
           </Typography>
-          <TextField
-            autoFocus
-            fullWidth
-            label="Checklist Title"
-            value={newChecklistTitle}
-            onChange={(e) => setNewChecklistTitle(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") handleCreateChecklist();
-            }}
-          />
+          <Stack spacing={2.5}>
+            <TextField
+              autoFocus
+              fullWidth
+              label="Checklist Title"
+              placeholder="e.g. Sprint Launch, Groceries, Trip Packing..."
+              value={newChecklistTitle}
+              onChange={(e) => setNewChecklistTitle(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleCreateChecklist();
+              }}
+            />
+
+            <FormControl fullWidth>
+              <InputLabel id="create-priority-label">Priority Level</InputLabel>
+              <Select
+                labelId="create-priority-label"
+                value={newChecklistPriority}
+                label="Priority Level"
+                onChange={(e) => setNewChecklistPriority(e.target.value)}
+              >
+                <MenuItem value="high">High</MenuItem>
+                <MenuItem value="medium">Medium (Default)</MenuItem>
+                <MenuItem value="low">Low</MenuItem>
+              </Select>
+            </FormControl>
+          </Stack>
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2.5 }}>
           <Button onClick={() => setOpenCreateModal(false)} color="inherit">
@@ -718,6 +592,394 @@ function Dashboard() {
         </DialogActions>
       </Dialog>
     </Box>
+  );
+}
+
+// ============================================================
+// INDIVIDUAL CHECKLIST CARD WITH LOCAL TASK FILTERING
+// Strictly equal dimensions (height: 380px) regardless of task count or filters
+// ============================================================
+function DashboardChecklistCard({ checklist, onToggleAllTasks, onDelete }) {
+  const navigate = useNavigate();
+  const [taskStatusFilter, setTaskStatusFilter] = useState("all"); // "all", "completed", "incomplete"
+  const [taskPriorityFilter, setTaskPriorityFilter] = useState("all"); // "all", "high", "medium", "low"
+
+  const totalTasks = checklist.tasks?.length || 0;
+  const completedTasks =
+    checklist.tasks?.filter((t) => t.completed).length || 0;
+  const isAllCompleted =
+    totalTasks > 0 && completedTasks === totalTasks;
+  const progressPercentage =
+    totalTasks > 0
+      ? Math.round((completedTasks / totalTasks) * 100)
+      : 0;
+  const priorityProps = getPriorityBadgeProps(checklist.priority);
+
+  // Independent card-level task filtering logic
+  const filteredTasks = (checklist.tasks || []).filter((task) => {
+    // 1. Completion filter
+    if (taskStatusFilter === "completed" && !task.completed) return false;
+    if (taskStatusFilter === "incomplete" && task.completed) return false;
+
+    // 2. Priority filter
+    if (taskPriorityFilter !== "all") {
+      const p = (task.priority || "medium").toLowerCase();
+      if (p !== taskPriorityFilter.toLowerCase()) return false;
+    }
+
+    return true;
+  });
+
+  return (
+    <Card
+      elevation={0}
+      sx={{
+        height: 380,
+        minHeight: 380,
+        maxHeight: 380,
+        display: "flex",
+        flexDirection: "column",
+        borderRadius: 3.5,
+        border: "1px solid",
+        borderColor: isAllCompleted ? "success.light" : "divider",
+        transition: "all 0.2s ease-in-out",
+        bgcolor: isAllCompleted ? "#f0fdf4" : "background.paper",
+        boxSizing: "border-box",
+        overflow: "hidden",
+        "&:hover": {
+          transform: "translateY(-3px)",
+          boxShadow: "0 12px 24px -5px rgba(0,0,0,0.08)",
+        },
+      }}
+    >
+      {/* Top Clickable Content Area */}
+      <Box
+        onClick={() => navigate(`/checklist/${checklist._id}`)}
+        sx={{
+          p: 2.5,
+          flexGrow: 1,
+          display: "flex",
+          flexDirection: "column",
+          cursor: "pointer",
+          overflow: "hidden",
+          userSelect: "none",
+        }}
+      >
+        {/* 1. Header Row (Fixed Height: 36px) */}
+        <Box
+          sx={{
+            height: 36,
+            minHeight: 36,
+            maxHeight: 36,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 1,
+            mb: 1.25,
+          }}
+        >
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: 1,
+              minWidth: 0,
+              flexGrow: 1,
+              overflow: "hidden",
+            }}
+          >
+            <Checkbox
+              checked={isAllCompleted}
+              disabled={totalTasks === 0}
+              onChange={(e) => {
+                e.stopPropagation();
+                onToggleAllTasks(checklist, isAllCompleted);
+              }}
+              onClick={(e) => e.stopPropagation()}
+              color="success"
+              size="small"
+              sx={{ p: 0.5, flexShrink: 0 }}
+            />
+            <Typography
+              variant="h6"
+              fontWeight={700}
+              noWrap
+              title={checklist.title}
+              sx={{
+                fontSize: "1.05rem",
+                textDecoration: isAllCompleted ? "line-through" : "none",
+                color: isAllCompleted ? "text.secondary" : "text.primary",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+                minWidth: 0,
+              }}
+            >
+              {checklist.title}
+            </Typography>
+          </Box>
+
+          {/* Priority Badge */}
+          <Chip
+            label={priorityProps.label}
+            size="small"
+            sx={{
+              fontWeight: 700,
+              fontSize: "0.72rem",
+              height: 22,
+              color: priorityProps.color,
+              bgcolor: priorityProps.bgcolor,
+              border: `1px solid ${priorityProps.border}`,
+              flexShrink: 0,
+            }}
+          />
+        </Box>
+
+        {/* 2. Progress Meta Section (Fixed Height: 36px) */}
+        <Box
+          sx={{
+            height: 36,
+            minHeight: 36,
+            maxHeight: 36,
+            mb: 1.5,
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "center",
+          }}
+        >
+          <Box sx={{ display: "flex", justifyContent: "space-between", mb: 0.5 }}>
+            <Typography variant="caption" color="text.secondary" fontWeight={600}>
+              {completedTasks} / {totalTasks} Tasks Completed
+            </Typography>
+            <Typography
+              variant="caption"
+              fontWeight={700}
+              color={isAllCompleted ? "success.main" : "primary.main"}
+            >
+              {progressPercentage}%
+            </Typography>
+          </Box>
+          <LinearProgress
+            variant="determinate"
+            value={progressPercentage}
+            sx={{
+              height: 6,
+              borderRadius: 3,
+              bgcolor: isAllCompleted ? "#bbf7d0" : "#e2e8f0",
+              "& .MuiLinearProgress-bar": {
+                bgcolor: isAllCompleted ? "#10b981" : "primary.main",
+                borderRadius: 3,
+              },
+            }}
+          />
+        </Box>
+
+        {/* 3. Card-Level Task Filter Controls (Fixed Height: 34px) */}
+        <Box
+          onClick={(e) => e.stopPropagation()}
+          sx={{
+            height: 34,
+            minHeight: 34,
+            maxHeight: 34,
+            display: "flex",
+            alignItems: "center",
+            gap: 1,
+            mb: 1.5,
+          }}
+        >
+          {/* Status Filter */}
+          <FormControl size="small" sx={{ minWidth: 0, flex: 1 }}>
+            <Select
+              value={taskStatusFilter}
+              onChange={(e) => setTaskStatusFilter(e.target.value)}
+              sx={{
+                height: 28,
+                fontSize: "0.75rem",
+                bgcolor: "background.paper",
+                "& .MuiSelect-select": { py: 0.25, px: 1 },
+              }}
+            >
+              <MenuItem value="all" sx={{ fontSize: "0.78rem" }}>All Status</MenuItem>
+              <MenuItem value="incomplete" sx={{ fontSize: "0.78rem" }}>Incomplete</MenuItem>
+              <MenuItem value="completed" sx={{ fontSize: "0.78rem" }}>Completed</MenuItem>
+            </Select>
+          </FormControl>
+
+          {/* Priority Filter */}
+          <FormControl size="small" sx={{ minWidth: 0, flex: 1 }}>
+            <Select
+              value={taskPriorityFilter}
+              onChange={(e) => setTaskPriorityFilter(e.target.value)}
+              sx={{
+                height: 28,
+                fontSize: "0.75rem",
+                bgcolor: "background.paper",
+                "& .MuiSelect-select": { py: 0.25, px: 1 },
+              }}
+            >
+              <MenuItem value="all" sx={{ fontSize: "0.78rem" }}>All Priority</MenuItem>
+              <MenuItem value="high" sx={{ fontSize: "0.78rem", color: "#dc2626", fontWeight: 700 }}>High</MenuItem>
+              <MenuItem value="medium" sx={{ fontSize: "0.78rem", color: "#d97706", fontWeight: 700 }}>Medium</MenuItem>
+              <MenuItem value="low" sx={{ fontSize: "0.78rem", color: "#2563eb", fontWeight: 700 }}>Low</MenuItem>
+            </Select>
+          </FormControl>
+        </Box>
+
+        {/* 4. Task Preview Area (Strict Fixed Height: 115px with internal scroll) */}
+        <Box
+          sx={{
+            height: 115,
+            minHeight: 115,
+            maxHeight: 115,
+            overflowY: "auto",
+            overflowX: "hidden",
+            pr: 0.5,
+            boxSizing: "border-box",
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {totalTasks === 0 ? (
+            <Box
+              sx={{
+                height: "100%",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                border: "1px dashed",
+                borderColor: "divider",
+                borderRadius: 2,
+                p: 1.5,
+                textAlign: "center",
+                bgcolor: "rgba(0,0,0,0.01)",
+              }}
+            >
+              <Typography variant="body2" color="text.secondary" sx={{ fontStyle: "italic", fontSize: "0.85rem" }}>
+                No tasks yet. Click to add.
+              </Typography>
+            </Box>
+          ) : filteredTasks.length === 0 ? (
+            <Box
+              sx={{
+                height: "100%",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                border: "1px dashed",
+                borderColor: "divider",
+                borderRadius: 2,
+                p: 1.5,
+                textAlign: "center",
+                bgcolor: "rgba(0,0,0,0.01)",
+              }}
+            >
+              <Typography variant="body2" color="text.secondary" sx={{ fontStyle: "italic", fontSize: "0.82rem" }}>
+                No tasks match these filters.
+              </Typography>
+            </Box>
+          ) : (
+            <Stack spacing={0.75}>
+              {filteredTasks.map((task, idx) => {
+                const taskPriority = getPriorityBadgeProps(task.priority);
+                return (
+                  <Box
+                    key={task._id || idx}
+                    sx={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      gap: 1,
+                      fontSize: "0.85rem",
+                      color: task.completed ? "text.secondary" : "text.primary",
+                      textDecoration: task.completed ? "line-through" : "none",
+                      minWidth: 0,
+                    }}
+                  >
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 1, minWidth: 0, flexGrow: 1, overflow: "hidden" }}>
+                      <Box
+                        sx={{
+                          width: 6,
+                          height: 6,
+                          borderRadius: "50%",
+                          bgcolor: task.completed ? "success.main" : taskPriority.color,
+                          flexShrink: 0,
+                        }}
+                      />
+                      <Typography
+                        variant="body2"
+                        noWrap
+                        title={task.title}
+                        sx={{
+                          fontSize: "0.85rem",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                          minWidth: 0,
+                        }}
+                      >
+                        {task.title}
+                      </Typography>
+                    </Box>
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        fontSize: "0.68rem",
+                        fontWeight: 700,
+                        color: taskPriority.color,
+                        bgcolor: taskPriority.bgcolor,
+                        px: 0.75,
+                        py: 0.1,
+                        borderRadius: 1,
+                        flexShrink: 0,
+                      }}
+                    >
+                      {taskPriority.label}
+                    </Typography>
+                  </Box>
+                );
+              })}
+            </Stack>
+          )}
+        </Box>
+      </Box>
+
+      {/* 5. Card Footer Actions (Strict Fixed Height: 52px at bottom) */}
+      <Box
+        sx={{
+          p: 1.25,
+          px: 2.5,
+          height: 52,
+          minHeight: 52,
+          maxHeight: 52,
+          boxSizing: "border-box",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          borderTop: "1px solid",
+          borderColor: isAllCompleted ? "#dcfce7" : "divider",
+          bgcolor: "background.paper",
+          mt: "auto",
+        }}
+      >
+        <Button
+          size="small"
+          color="primary"
+          onClick={() => navigate(`/checklist/${checklist._id}`)}
+          sx={{ fontWeight: 600 }}
+        >
+          Manage
+        </Button>
+        <IconButton
+          size="small"
+          color="error"
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete(checklist._id);
+          }}
+        >
+          <DeleteIcon fontSize="small" />
+        </IconButton>
+      </Box>
+    </Card>
   );
 }
 

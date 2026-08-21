@@ -140,7 +140,7 @@ function DashboardAgentDrawer({ isOpen, onClose }) {
             <AutoAwesomeIcon fontSize="small" />
           </Box>
           <Box>
-            <Typography variant="subtitle1" fontWeight={700} lineHeight={1.2}>
+            <Typography variant="subtitle1" fontWeight={700} sx={{ lineHeight: 1.2 }}>
               Task Assistant
             </Typography>
             <Typography variant="caption" color="text.secondary">

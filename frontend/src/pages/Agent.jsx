@@ -19,6 +19,9 @@ import {
   Stack,
   Divider,
   Tooltip,
+  FormControl,
+  Select,
+  MenuItem,
 } from "@mui/material";
 import {
   AutoAwesome as AutoAwesomeIcon,
@@ -35,6 +38,7 @@ import {
   ListAlt as ListAltIcon,
 } from "@mui/icons-material";
 import Navbar from "../components/Navbar";
+import { getPriorityBadgeProps } from "../utils/priority";
 
 function Agent() {
   const navigate = useNavigate();
@@ -182,12 +186,12 @@ function Agent() {
     }
   };
 
-  const handleTaskChange = async (checklistId, tasks, newTitle) => {
+  const handleTaskChange = async (checklistId, tasks, newTitle, newPriority) => {
     try {
       const token = localStorage.getItem("token");
       await axios.put(
         `http://localhost:5000/api/checklists/${checklistId}`,
-        { tasks, title: newTitle },
+        { tasks, title: newTitle, priority: newPriority },
         { headers: { Authorization: `Bearer ${token}` } }
       );
       fetchDrafts();
@@ -196,20 +200,25 @@ function Agent() {
     }
   };
 
-  const handleEditTask = (checklist, taskIndex, newTitle) => {
+  const handleEditTask = (checklist, taskIndex, newTitle, newPriority) => {
     const newTasks = [...checklist.tasks];
     newTasks[taskIndex].title = newTitle;
-    handleTaskChange(checklist._id, newTasks, checklist.title);
+    if (newPriority) newTasks[taskIndex].priority = newPriority;
+    handleTaskChange(checklist._id, newTasks, checklist.title, checklist.priority);
   };
 
   const handleDeleteTask = (checklist, taskIndex) => {
     const newTasks = checklist.tasks.filter((_, idx) => idx !== taskIndex);
-    handleTaskChange(checklist._id, newTasks, checklist.title);
+    handleTaskChange(checklist._id, newTasks, checklist.title, checklist.priority);
   };
 
-  const handleAddTask = (checklist, title) => {
-    const newTasks = [...checklist.tasks, { title, completed: false }];
-    handleTaskChange(checklist._id, newTasks, checklist.title);
+  const handleAddTask = (checklist, title, priority = "medium") => {
+    const newTasks = [...checklist.tasks, { title, completed: false, priority }];
+    handleTaskChange(checklist._id, newTasks, checklist.title, checklist.priority);
+  };
+
+  const handleChecklistPriorityChange = (checklist, newPriority) => {
+    handleTaskChange(checklist._id, checklist.tasks, checklist.title, newPriority);
   };
 
   const handleMoveDraftUp = (checklist, idx) => {
@@ -218,7 +227,7 @@ function Agent() {
     const temp = newTasks[idx];
     newTasks[idx] = newTasks[idx - 1];
     newTasks[idx - 1] = temp;
-    handleTaskChange(checklist._id, newTasks, checklist.title);
+    handleTaskChange(checklist._id, newTasks, checklist.title, checklist.priority);
   };
 
   const handleMoveDraftDown = (checklist, idx) => {
@@ -227,7 +236,7 @@ function Agent() {
     const temp = newTasks[idx];
     newTasks[idx] = newTasks[idx + 1];
     newTasks[idx + 1] = temp;
-    handleTaskChange(checklist._id, newTasks, checklist.title);
+    handleTaskChange(checklist._id, newTasks, checklist.title, checklist.priority);
   };
 
   return (
@@ -271,7 +280,7 @@ function Agent() {
                   <AutoAwesomeIcon />
                 </Avatar>
                 <Box>
-                  <Typography variant="h6" fontWeight={700} lineHeight={1.2}>
+                  <Typography variant="h6" fontWeight={700} sx={{ lineHeight: 1.2 }}>
                     AI Checklist Architect
                   </Typography>
                   <Typography variant="caption" color="text.secondary">
@@ -482,11 +491,16 @@ function Agent() {
                         checklist={checklist}
                         onApprove={() => handleApprove(checklist._id)}
                         onDecline={() => handleDecline(checklist._id)}
-                        onEditTask={(idx, title) =>
-                          handleEditTask(checklist, idx, title)
+                        onChecklistPriorityChange={(newPriority) =>
+                          handleChecklistPriorityChange(checklist, newPriority)
+                        }
+                        onEditTask={(idx, title, priority) =>
+                          handleEditTask(checklist, idx, title, priority)
                         }
                         onDeleteTask={(idx) => handleDeleteTask(checklist, idx)}
-                        onAddTask={(title) => handleAddTask(checklist, title)}
+                        onAddTask={(title, priority) =>
+                          handleAddTask(checklist, title, priority)
+                        }
                         onMoveUp={(idx) => handleMoveDraftUp(checklist, idx)}
                         onMoveDown={(idx) => handleMoveDraftDown(checklist, idx)}
                       />
@@ -506,6 +520,7 @@ function DraftChecklistCard({
   checklist,
   onApprove,
   onDecline,
+  onChecklistPriorityChange,
   onEditTask,
   onDeleteTask,
   onAddTask,
@@ -513,19 +528,22 @@ function DraftChecklistCard({
   onMoveDown,
 }) {
   const [newTask, setNewTask] = useState("");
+  const [newTaskPriority, setNewTaskPriority] = useState("medium");
   const [editingIdx, setEditingIdx] = useState(null);
   const [editValue, setEditValue] = useState("");
+  const [editPriority, setEditPriority] = useState("medium");
 
   const submitNewTask = (e) => {
     e.preventDefault();
     if (!newTask.trim()) return;
-    onAddTask(newTask.trim());
+    onAddTask(newTask.trim(), newTaskPriority);
     setNewTask("");
+    setNewTaskPriority("medium");
   };
 
   const submitEdit = (idx) => {
     if (!editValue.trim()) return;
-    onEditTask(idx, editValue.trim());
+    onEditTask(idx, editValue.trim(), editPriority);
     setEditingIdx(null);
   };
 
@@ -541,107 +559,199 @@ function DraftChecklistCard({
       }}
     >
       <CardContent sx={{ p: 3 }}>
-        {/* Title */}
-        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
-          <Typography variant="h6" fontWeight={700}>
-            {checklist.title}
-          </Typography>
-          <Chip
-            size="small"
-            label={`${checklist.tasks.length} tasks`}
-            variant="outlined"
-            sx={{ fontWeight: 600 }}
-          />
+        {/* Header with Title and Editable Checklist Priority Selector */}
+        <Box
+          sx={{
+            display: "flex",
+            flexDirection: { xs: "column", sm: "row" },
+            justifyContent: "space-between",
+            alignItems: { xs: "flex-start", sm: "center" },
+            gap: 1.5,
+            mb: 2,
+          }}
+        >
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, flexGrow: 1 }}>
+            <Typography variant="h6" fontWeight={700}>
+              {checklist.title}
+            </Typography>
+            <Chip
+              size="small"
+              label={`${checklist.tasks?.length || 0} tasks`}
+              variant="outlined"
+              sx={{ fontWeight: 600 }}
+            />
+          </Box>
+
+          {/* Checklist Priority Dropdown */}
+          <FormControl size="small" sx={{ minWidth: 140, flexShrink: 0 }}>
+            <Select
+              value={checklist.priority || "medium"}
+              onChange={(e) => onChecklistPriorityChange(e.target.value)}
+              renderValue={(val) => {
+                const badge = getPriorityBadgeProps(val);
+                return (
+                  <Chip
+                    label={badge.label}
+                    size="small"
+                    sx={{
+                      fontWeight: 700,
+                      fontSize: "0.72rem",
+                      color: badge.color,
+                      bgcolor: badge.bgcolor,
+                      border: `1px solid ${badge.border}`,
+                    }}
+                  />
+                );
+              }}
+            >
+              <MenuItem value="high">High Priority</MenuItem>
+              <MenuItem value="medium">Medium Priority</MenuItem>
+              <MenuItem value="low">Low Priority</MenuItem>
+            </Select>
+          </FormControl>
         </Box>
 
         <Divider sx={{ mb: 2 }} />
 
         {/* Tasks */}
         <Stack spacing={1} sx={{ mb: 2.5 }}>
-          {checklist.tasks.map((task, idx) => (
-            <Paper
-              key={task._id || idx}
-              elevation={0}
-              sx={{
-                p: 1.25,
-                px: 2,
-                borderRadius: 2,
-                border: "1px solid",
-                borderColor: "divider",
-                bgcolor: "#f8fafc",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-              }}
-            >
-              {editingIdx === idx ? (
-                <Box sx={{ display: "flex", gap: 1, width: "100%", alignItems: "center" }}>
-                  <TextField
-                    size="small"
-                    fullWidth
-                    value={editValue}
-                    onChange={(e) => setEditValue(e.target.value)}
-                    autoFocus
-                  />
-                  <Button size="small" variant="contained" onClick={() => submitEdit(idx)}>
-                    Save
-                  </Button>
-                  <Button size="small" onClick={() => setEditingIdx(null)}>
-                    Cancel
-                  </Button>
-                </Box>
-              ) : (
-                <>
-                  <Typography variant="body2" fontWeight={500} sx={{ flexGrow: 1, pr: 1 }}>
-                    {idx + 1}. {task.title}
-                  </Typography>
-                  <Box sx={{ display: "flex", alignItems: "center" }}>
-                    <Tooltip title="Edit task">
-                      <IconButton
-                        size="small"
-                        onClick={() => {
-                          setEditingIdx(idx);
-                          setEditValue(task.title);
-                        }}
+          {checklist.tasks.map((task, idx) => {
+            const taskPriority = getPriorityBadgeProps(task.priority);
+
+            return (
+              <Paper
+                key={task._id || idx}
+                elevation={0}
+                sx={{
+                  p: 1.25,
+                  px: 2,
+                  borderRadius: 2,
+                  border: "1px solid",
+                  borderColor: "divider",
+                  bgcolor: "#f8fafc",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 1,
+                  flexWrap: { xs: "wrap", sm: "nowrap" },
+                }}
+              >
+                {editingIdx === idx ? (
+                  <Box sx={{ display: "flex", gap: 1, width: "100%", alignItems: "center" }}>
+                    <TextField
+                      size="small"
+                      fullWidth
+                      value={editValue}
+                      onChange={(e) => setEditValue(e.target.value)}
+                      autoFocus
+                    />
+                    <FormControl size="small" sx={{ minWidth: 95, flexShrink: 0 }}>
+                      <Select
+                        value={editPriority}
+                        onChange={(e) => setEditPriority(e.target.value)}
                       >
-                        <EditIcon fontSize="small" />
-                      </IconButton>
-                    </Tooltip>
-                    <Tooltip title="Move up">
-                      <span>
-                        <IconButton
-                          size="small"
-                          disabled={idx === 0}
-                          onClick={() => onMoveUp(idx)}
-                        >
-                          <ArrowUpwardIcon fontSize="small" />
-                        </IconButton>
-                      </span>
-                    </Tooltip>
-                    <Tooltip title="Move down">
-                      <span>
-                        <IconButton
-                          size="small"
-                          disabled={idx === checklist.tasks.length - 1}
-                          onClick={() => onMoveDown(idx)}
-                        >
-                          <ArrowDownwardIcon fontSize="small" />
-                        </IconButton>
-                      </span>
-                    </Tooltip>
-                    <Tooltip title="Delete task">
-                      <IconButton size="small" color="error" onClick={() => onDeleteTask(idx)}>
-                        <DeleteIcon fontSize="small" />
-                      </IconButton>
-                    </Tooltip>
+                        <MenuItem value="high">High</MenuItem>
+                        <MenuItem value="medium">Medium</MenuItem>
+                        <MenuItem value="low">Low</MenuItem>
+                      </Select>
+                    </FormControl>
+                    <Button size="small" variant="contained" onClick={() => submitEdit(idx)}>
+                      Save
+                    </Button>
+                    <Button size="small" onClick={() => setEditingIdx(null)}>
+                      Cancel
+                    </Button>
                   </Box>
-                </>
-              )}
-            </Paper>
-          ))}
+                ) : (
+                  <>
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, flexGrow: 1, overflow: "hidden" }}>
+                      <Typography variant="body2" fontWeight={500} noWrap sx={{ pr: 1 }}>
+                        {idx + 1}. {task.title}
+                      </Typography>
+                    </Box>
+
+                    {/* Task Priority Selector Dropdown */}
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexShrink: 0 }}>
+                      <FormControl size="small" sx={{ minWidth: 95 }}>
+                        <Select
+                          value={task.priority || "medium"}
+                          onChange={(e) => onEditTask(idx, task.title, e.target.value)}
+                          sx={{
+                            height: 26,
+                            fontSize: "0.72rem",
+                            fontWeight: 700,
+                            bgcolor: taskPriority.bgcolor,
+                            color: taskPriority.color,
+                            border: `1px solid ${taskPriority.border}`,
+                            "& .MuiSelect-select": {
+                              py: 0.2,
+                              px: 0.8,
+                            },
+                            "& .MuiOutlinedInput-notchedOutline": {
+                              border: "none",
+                            },
+                          }}
+                        >
+                          <MenuItem value="high" sx={{ fontSize: "0.75rem", color: "#dc2626", fontWeight: 700 }}>
+                            High
+                          </MenuItem>
+                          <MenuItem value="medium" sx={{ fontSize: "0.75rem", color: "#d97706", fontWeight: 700 }}>
+                            Medium
+                          </MenuItem>
+                          <MenuItem value="low" sx={{ fontSize: "0.75rem", color: "#2563eb", fontWeight: 700 }}>
+                            Low
+                          </MenuItem>
+                        </Select>
+                      </FormControl>
+
+                      <Tooltip title="Edit task title">
+                        <IconButton
+                          size="small"
+                          onClick={() => {
+                            setEditingIdx(idx);
+                            setEditValue(task.title);
+                            setEditPriority(task.priority || "medium");
+                          }}
+                        >
+                          <EditIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Move up">
+                        <span>
+                          <IconButton
+                            size="small"
+                            disabled={idx === 0}
+                            onClick={() => onMoveUp(idx)}
+                          >
+                            <ArrowUpwardIcon fontSize="small" />
+                          </IconButton>
+                        </span>
+                      </Tooltip>
+                      <Tooltip title="Move down">
+                        <span>
+                          <IconButton
+                            size="small"
+                            disabled={idx === checklist.tasks.length - 1}
+                            onClick={() => onMoveDown(idx)}
+                          >
+                            <ArrowDownwardIcon fontSize="small" />
+                          </IconButton>
+                        </span>
+                      </Tooltip>
+                      <Tooltip title="Delete task">
+                        <IconButton size="small" color="error" onClick={() => onDeleteTask(idx)}>
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                    </Box>
+                  </>
+                )}
+              </Paper>
+            );
+          })}
         </Stack>
 
-        {/* Add custom item form */}
+        {/* Add custom item form with priority */}
         <Box component="form" onSubmit={submitNewTask} sx={{ display: "flex", gap: 1, mb: 3 }}>
           <TextField
             size="small"
@@ -650,6 +760,16 @@ function DraftChecklistCard({
             value={newTask}
             onChange={(e) => setNewTask(e.target.value)}
           />
+          <FormControl size="small" sx={{ minWidth: 100, flexShrink: 0 }}>
+            <Select
+              value={newTaskPriority}
+              onChange={(e) => setNewTaskPriority(e.target.value)}
+            >
+              <MenuItem value="high">High</MenuItem>
+              <MenuItem value="medium">Medium</MenuItem>
+              <MenuItem value="low">Low</MenuItem>
+            </Select>
+          </FormControl>
           <Button type="submit" variant="outlined" startIcon={<AddIcon />} disabled={!newTask.trim()}>
             Add
           </Button>
