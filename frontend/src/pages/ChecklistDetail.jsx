@@ -52,6 +52,8 @@ function ChecklistDetail() {
   const [newTask, setNewTask] = useState("");
   const [newTaskPriority, setNewTaskPriority] = useState("medium");
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [taskStatusFilter, setTaskStatusFilter] = useState("all"); // "all", "completed", "pending"
+  const [taskPriorityFilter, setTaskPriorityFilter] = useState("all"); // "all", "high", "medium", "low"
 
   useEffect(() => {
     fetchChecklist();
@@ -355,6 +357,70 @@ function ChecklistDetail() {
 
             <Divider sx={{ my: 3 }} />
 
+            {/* Task Filters: Status & Priority side-by-side */}
+            <Box
+              sx={{
+                display: "flex",
+                flexDirection: { xs: "column", sm: "row" },
+                alignItems: { xs: "stretch", sm: "center" },
+                justifyContent: "space-between",
+                gap: 2,
+                mb: 2.5,
+                p: 2,
+                borderRadius: 2.5,
+                bgcolor: "background.paper",
+                border: "1px solid",
+                borderColor: "divider",
+              }}
+            >
+              <Box sx={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 2 }}>
+                {/* 1. Status Filter */}
+                <FormControl size="small" sx={{ minWidth: 150 }}>
+                  <InputLabel id="task-status-filter-label">Status</InputLabel>
+                  <Select
+                    labelId="task-status-filter-label"
+                    value={taskStatusFilter}
+                    label="Status"
+                    onChange={(e) => setTaskStatusFilter(e.target.value)}
+                  >
+                    <MenuItem value="all">All Status</MenuItem>
+                    <MenuItem value="completed">Completed</MenuItem>
+                    <MenuItem value="pending">Pending</MenuItem>
+                  </Select>
+                </FormControl>
+
+                {/* 2. Priority Filter */}
+                <FormControl size="small" sx={{ minWidth: 150 }}>
+                  <InputLabel id="task-priority-filter-label">Priority</InputLabel>
+                  <Select
+                    labelId="task-priority-filter-label"
+                    value={taskPriorityFilter}
+                    label="Priority"
+                    onChange={(e) => setTaskPriorityFilter(e.target.value)}
+                  >
+                    <MenuItem value="all">All Priorities</MenuItem>
+                    <MenuItem value="high" sx={{ color: "#dc2626", fontWeight: 700 }}>High</MenuItem>
+                    <MenuItem value="medium" sx={{ color: "#d97706", fontWeight: 700 }}>Medium</MenuItem>
+                    <MenuItem value="low" sx={{ color: "#2563eb", fontWeight: 700 }}>Low</MenuItem>
+                  </Select>
+                </FormControl>
+              </Box>
+
+              {(taskStatusFilter !== "all" || taskPriorityFilter !== "all") && (
+                <Button
+                  size="small"
+                  variant="outlined"
+                  onClick={() => {
+                    setTaskStatusFilter("all");
+                    setTaskPriorityFilter("all");
+                  }}
+                  sx={{ alignSelf: { xs: "flex-start", sm: "center" }, textTransform: "none", fontWeight: 600 }}
+                >
+                  Clear Filters
+                </Button>
+              )}
+            </Box>
+
             {/* Task List */}
             <Stack spacing={1.5} sx={{ mb: 3 }}>
               {tasks.length === 0 ? (
@@ -362,9 +428,53 @@ function ChecklistDetail() {
                   <Typography variant="body1">No tasks in this checklist yet.</Typography>
                   <Typography variant="caption">Add your first task using the form below.</Typography>
                 </Box>
+              ) : tasks.filter((task) => {
+                  // Status filter
+                  if (taskStatusFilter === "completed" && !task.completed) return false;
+                  if (taskStatusFilter === "pending" && task.completed) return false;
+
+                  // Priority filter
+                  if (taskPriorityFilter !== "all") {
+                    const p = (task.priority || "medium").toLowerCase();
+                    if (p !== taskPriorityFilter.toLowerCase()) return false;
+                  }
+
+                  return true;
+                }).length === 0 ? (
+                <Box sx={{ textAlign: "center", py: 4, color: "text.secondary", border: "1px dashed", borderColor: "divider", borderRadius: 2 }}>
+                  <Typography variant="body2" fontWeight={600}>No tasks match the selected filters.</Typography>
+                  <Typography variant="caption" sx={{ display: "block", mt: 0.5 }}>Try adjusting Status or Priority to see more tasks.</Typography>
+                  <Button
+                    size="small"
+                    variant="text"
+                    onClick={() => {
+                      setTaskStatusFilter("all");
+                      setTaskPriorityFilter("all");
+                    }}
+                    sx={{ mt: 1, textTransform: "none" }}
+                  >
+                    Reset Filters
+                  </Button>
+                </Box>
               ) : (
-                tasks.map((task, idx) => {
-                  const taskPriorityProps = getPriorityBadgeProps(task.priority);
+                tasks
+                  .map((task, originalIdx) => ({ task, originalIdx }))
+                  .filter(({ task }) => {
+                    // Status filter
+                    if (taskStatusFilter === "completed" && !task.completed) return false;
+                    if (taskStatusFilter === "pending" && task.completed) return false;
+
+                    // Priority filter
+                    if (taskPriorityFilter !== "all") {
+                      const p = (task.priority || "medium").toLowerCase();
+                      if (p !== taskPriorityFilter.toLowerCase()) return false;
+                    }
+
+                    return true;
+                  })
+                  .map(({ task, originalIdx }) => {
+                    const idx = originalIdx;
+                    const taskPriorityProps = getPriorityBadgeProps(task.priority);
 
                   return (
                     <Paper

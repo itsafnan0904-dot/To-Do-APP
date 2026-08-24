@@ -27,6 +27,7 @@ import {
   Select,
   MenuItem,
   InputLabel,
+  Tooltip,
 } from "@mui/material";
 import {
   Add as AddIcon,
@@ -35,8 +36,95 @@ import {
   ListAlt as ListAltIcon,
   FilterList as FilterListIcon,
   Clear as ClearIcon,
+  Refresh as RefreshIcon,
 } from "@mui/icons-material";
 import { getPriorityBadgeProps } from "../utils/priority";
+
+const MOTIVATIONAL_QUOTES = [
+  {
+    quote: "Simplicity is the soul of efficiency.",
+    author: "Austin Freeman",
+  },
+  {
+    quote: "Make it work, make it right, make it fast.",
+    author: "Kent Beck",
+  },
+  {
+    quote: "Small daily improvements over time lead to stunning results.",
+    author: "Robin Sharma",
+  },
+  {
+    quote: "Code is like humor. When you have to explain it, it’s bad.",
+    author: "Cory House",
+  },
+  {
+    quote: "First, solve the problem. Then, write the code.",
+    author: "John Johnson",
+  },
+  {
+    quote: "Focus on being productive instead of busy.",
+    author: "Tim Ferriss",
+  },
+  {
+    quote: "Experience is the name everyone gives to their mistakes.",
+    author: "Oscar Wilde",
+  },
+  {
+    quote: "Action is the foundational key to all success.",
+    author: "Pablo Picasso",
+  },
+  {
+    quote: "Continuous improvement is better than delayed perfection.",
+    author: "Mark Twain",
+  },
+  {
+    quote: "The secret of getting ahead is getting started.",
+    author: "Mark Twain",
+  },
+];
+
+const getAIInsight = (checklists) => {
+  const safeChecklists = checklists || [];
+  const allTasks = safeChecklists.flatMap((cl) => cl?.tasks || []);
+  const totalTasks = allTasks.length;
+
+  if (totalTasks === 0) {
+    return "Tip: Start by adding your first task and build momentum from there.";
+  }
+
+  const completedCount = allTasks.filter((t) => t?.completed).length;
+  const completionRate = totalTasks > 0 ? (completedCount / totalTasks) * 100 : 0;
+
+  // RULE 1 — 0% COMPLETION
+  if (completedCount === 0) {
+    const hasHighPriority = allTasks.some(
+      (t) => (t?.priority || "").toLowerCase() === "high"
+    );
+    if (hasHighPriority) {
+      return "Tip: Select one High-Priority task and focus on completing it first to build momentum.";
+    }
+    return "Tip: Select one important task and focus on completing it first to build momentum.";
+  }
+
+  // RULE 2 — HIGH PRIORITY TASKS > 50%
+  const tasksWithPriority = allTasks.filter((t) => t?.priority);
+  if (tasksWithPriority.length > 0) {
+    const highPriorityCount = allTasks.filter(
+      (t) => (t?.priority || "").toLowerCase() === "high"
+    ).length;
+    if (highPriorityCount / totalTasks > 0.5) {
+      return "Caution: Over half your tasks are marked High Priority. Consider downgrading non-urgent items.";
+    }
+  }
+
+  // RULE 3 — COMPLETION > 70%
+  if (completionRate > 70) {
+    return "Great velocity! You're close to closing out your active work streams.";
+  }
+
+  // RULE 4 — DEFAULT
+  return "Tip: Group similar tasks together into focused 25-minute work blocks.";
+};
 
 function Dashboard() {
   const navigate = useNavigate();
@@ -44,11 +132,41 @@ function Dashboard() {
   const [newChecklistTitle, setNewChecklistTitle] = useState("");
   const [newChecklistPriority, setNewChecklistPriority] = useState("medium");
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all"); // "all", "completed", "in-progress", "empty"
+  const [statusFilter, setStatusFilter] = useState("all"); // "all", "pending", "completed"
   const [priorityFilter, setPriorityFilter] = useState("all"); // "all", "high", "medium", "low"
   const [loading, setLoading] = useState(true);
   const [openCreateModal, setOpenCreateModal] = useState(false);
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
+  
+  // Quote State & Rotation
+  const [quoteIndex, setQuoteIndex] = useState(() =>
+    Math.floor(Math.random() * MOTIVATIONAL_QUOTES.length)
+  );
+  const [isQuoteVisible, setIsQuoteVisible] = useState(true);
+
+  // Quote change transition logic (fade-out -> change index -> fade-in)
+  const changeQuoteWithFade = () => {
+    setIsQuoteVisible(false);
+    setTimeout(() => {
+      setQuoteIndex((prevIndex) => {
+        let nextIndex;
+        do {
+          nextIndex = Math.floor(Math.random() * MOTIVATIONAL_QUOTES.length);
+        } while (nextIndex === prevIndex && MOTIVATIONAL_QUOTES.length > 1);
+        return nextIndex;
+      });
+      setIsQuoteVisible(true);
+    }, 300);
+  };
+
+  // Automatic 15-second rotation with cleanup
+  useEffect(() => {
+    const interval = setInterval(() => {
+      changeQuoteWithFade();
+    }, 15000);
+
+    return () => clearInterval(interval);
+  }, []);
 
   // =========================
   // FETCH CHECKLISTS
@@ -196,34 +314,44 @@ function Dashboard() {
       : 0;
 
   // =========================
-  // CLIENT-SIDE SEARCH, STATUS & PRIORITY FILTERING
+  // CLIENT-SIDE SEARCH, STATUS & PRIORITY FILTERING (CARD-LEVEL VISIBILITY)
   // =========================
   const filteredChecklists = approvedChecklists.filter((cl) => {
     const query = search.toLowerCase().trim();
-    const matchesTitle = cl.title.toLowerCase().includes(query);
-    const matchesAnyTask = cl.tasks?.some((t) =>
-      t.title.toLowerCase().includes(query)
-    );
-    const matchesSearch = !query || matchesTitle || matchesAnyTask;
+    const allTasks = cl.tasks || [];
 
-    const totalTasks = cl.tasks?.length || 0;
-    const completedTasks = cl.tasks?.filter((t) => t.completed).length || 0;
-    const isCompleted = totalTasks > 0 && completedTasks === totalTasks;
-    const isInProgress = totalTasks > 0 && completedTasks < totalTasks;
-    const isEmpty = totalTasks === 0;
-
-    let matchesStatus = true;
-    if (statusFilter === "completed") matchesStatus = isCompleted;
-    if (statusFilter === "in-progress") matchesStatus = isInProgress;
-    if (statusFilter === "empty") matchesStatus = isEmpty;
-
-    let matchesPriority = true;
-    if (priorityFilter !== "all") {
-      const clPriority = (cl.priority || "medium").toLowerCase();
-      matchesPriority = clPriority === priorityFilter.toLowerCase();
+    // 1. Search Query: Matches checklist title or any task title inside
+    if (query) {
+      const matchesTitle = cl.title.toLowerCase().includes(query);
+      const matchesAnyTask = allTasks.some((t) =>
+        t.title.toLowerCase().includes(query)
+      );
+      if (!matchesTitle && !matchesAnyTask) return false;
     }
 
-    return matchesSearch && matchesStatus && matchesPriority;
+    // 2. Global Status Filter:
+    // "pending" → Checklist must contain at least one incomplete task (or be empty)
+    // "completed" → Checklist must have tasks and all tasks completed
+    if (statusFilter === "pending") {
+      const hasPendingTasks = allTasks.some((t) => !t.completed);
+      if (allTasks.length > 0 && !hasPendingTasks) return false;
+    } else if (statusFilter === "completed") {
+      const total = allTasks.length;
+      const completed = allTasks.filter((t) => t.completed).length;
+      if (total === 0 || completed < total) return false;
+    }
+
+    // 3. Global Priority Filter:
+    // Filter ONLY by the checklist's own priority.
+    // Task priorities must NOT affect Dashboard card visibility.
+    if (
+      priorityFilter !== "all" &&
+      (cl.priority || "").toLowerCase() !== priorityFilter.toLowerCase()
+    ) {
+      return false;
+    }
+
+    return true;
   });
 
   return (
@@ -235,7 +363,7 @@ function Dashboard() {
         <Paper
           elevation={0}
           sx={{
-            p: { xs: 3, sm: 4, md: 5 },
+            p: { xs: 2.5, sm: 3.5, md: 4 },
             borderRadius: "24px",
             background: "linear-gradient(90deg, #5B42F3 0%, #7c3aed 45%, #db2777 80%, #EF233C 100%)",
             color: "white",
@@ -245,16 +373,25 @@ function Dashboard() {
             boxShadow: "0 14px 36px rgba(91, 66, 243, 0.28)",
           }}
         >
-          <Grid container spacing={3} alignItems="center">
-            {/* Left Side Content (Title, Subtitle & Action) */}
-            <Grid item xs={12} md={7}>
+          {/* Hero Header Area: Title, Description & Action Button */}
+          <Box
+            sx={{
+              display: "flex",
+              flexDirection: { xs: "column", md: "row" },
+              justifyContent: "space-between",
+              alignItems: { xs: "flex-start", md: "center" },
+              gap: 2,
+              mb: 3,
+            }}
+          >
+            <Box>
               <Typography
                 variant="h4"
                 sx={{
                   fontSize: { xs: "1.75rem", sm: "2rem", md: "2.25rem" },
                   fontWeight: 800,
                   color: "white",
-                  mb: 1,
+                  mb: 0.75,
                   letterSpacing: "-0.5px",
                 }}
               >
@@ -265,77 +402,94 @@ function Dashboard() {
                 sx={{
                   color: "rgba(255, 255, 255, 0.85)",
                   fontSize: { xs: "0.875rem", sm: "0.95rem" },
-                  maxWidth: 540,
-                  mb: 3,
-                  lineHeight: 1.6,
+                  maxWidth: 600,
+                  lineHeight: 1.5,
                 }}
               >
                 Organize your work streams, monitor task completion, and harness AI to draft customized workflows.
               </Typography>
-              <Box>
-                <Button
-                  variant="contained"
-                  size="large"
-                  startIcon={<AddIcon />}
-                  onClick={() => setOpenCreateModal(true)}
-                  sx={{
-                    bgcolor: "#ffffff",
-                    color: "#4f46e5",
-                    fontWeight: 700,
-                    borderRadius: "50px",
-                    px: 3.5,
-                    py: 1.2,
-                    fontSize: "0.95rem",
-                    boxShadow: "0 4px 14px rgba(0, 0, 0, 0.15)",
-                    "&:hover": {
-                      bgcolor: "#f8fafc",
-                      color: "#4338ca",
-                      transform: "translateY(-1px)",
-                      boxShadow: "0 6px 20px rgba(0, 0, 0, 0.2)",
-                    },
-                  }}
-                >
-                  New Checklist
-                </Button>
-              </Box>
-            </Grid>
+            </Box>
 
-            {/* Embedded Right Metrics Card (Overall Completion Widget) */}
-            <Grid item xs={12} md={5}>
-              <Paper
-                elevation={0}
-                sx={{
-                  p: { xs: 2.5, sm: 3 },
-                  borderRadius: "20px",
-                  bgcolor: "rgba(255, 255, 255, 0.12)",
-                  backdropFilter: "blur(10px)",
-                  WebkitBackdropFilter: "blur(10px)",
-                  border: "1px solid rgba(255, 255, 255, 0.22)",
-                  color: "white",
-                  boxShadow: "0 8px 32px rgba(0, 0, 0, 0.12)",
-                }}
-              >
+            <Button
+              variant="contained"
+              size="large"
+              startIcon={<AddIcon />}
+              onClick={() => setOpenCreateModal(true)}
+              sx={{
+                bgcolor: "#ffffff",
+                color: "#4f46e5",
+                fontWeight: 700,
+                borderRadius: "50px",
+                px: 3.5,
+                py: 1.2,
+                fontSize: "0.95rem",
+                whiteSpace: "nowrap",
+                boxShadow: "0 4px 14px rgba(0, 0, 0, 0.15)",
+                "&:hover": {
+                  bgcolor: "#f8fafc",
+                  color: "#4338ca",
+                  transform: "translateY(-1px)",
+                  boxShadow: "0 6px 20px rgba(0, 0, 0, 0.2)",
+                },
+              }}
+            >
+              New Checklist
+            </Button>
+          </Box>
+
+          {/* 3-Column Glassmorphic Cards Grid */}
+          <Box
+            sx={{
+              display: "grid",
+              gridTemplateColumns: {
+                xs: "1fr",
+                md: "repeat(3, 1fr)",
+              },
+              gap: 3,
+              alignItems: "stretch",
+            }}
+          >
+            {/* 1. Overall Completion Card */}
+            <Paper
+              elevation={0}
+              sx={{
+                p: 2.5,
+                borderRadius: "16px",
+                bgcolor: "rgba(255, 255, 255, 0.12)",
+                backdropFilter: "blur(10px)",
+                WebkitBackdropFilter: "blur(10px)",
+                border: "1px solid rgba(255, 255, 255, 0.2)",
+                color: "white",
+                boxShadow: "0 8px 32px rgba(0, 0, 0, 0.12)",
+                minHeight: "140px",
+                display: "flex",
+                flexDirection: "column",
+                justifyContent: "space-between",
+              }}
+            >
+              <Box>
                 <Typography
                   variant="caption"
                   sx={{
                     display: "block",
-                    fontWeight: 800,
-                    color: "rgba(255, 255, 255, 0.75)",
+                    fontSize: "12px",
+                    fontWeight: 700,
+                    color: "rgba(255, 255, 255, 0.7)",
                     letterSpacing: "1px",
                     textTransform: "uppercase",
-                    mb: 1.5,
+                    mb: 1,
                   }}
                 >
                   OVERALL COMPLETION
                 </Typography>
 
-                <Box sx={{ display: "flex", alignItems: "baseline", gap: 1.5, mb: 2 }}>
+                <Box sx={{ display: "flex", alignItems: "baseline", gap: 1.5, mb: 1.5 }}>
                   <Typography
                     variant="h3"
                     sx={{
                       fontWeight: 800,
                       color: "white",
-                      fontSize: { xs: "2.25rem", sm: "2.75rem" },
+                      fontSize: { xs: "2rem", sm: "2.25rem" },
                       lineHeight: 1,
                     }}
                   >
@@ -346,36 +500,215 @@ function Dashboard() {
                     sx={{
                       color: "rgba(255, 255, 255, 0.85)",
                       fontWeight: 500,
+                      fontSize: "0.85rem",
                     }}
                   >
                     ({completedAllTasks} of {totalAllTasks} tasks finished)
                   </Typography>
                 </Box>
+              </Box>
 
-                <LinearProgress
-                  variant="determinate"
-                  value={overallPercentage}
-                  sx={{
-                    height: 8,
+              <LinearProgress
+                variant="determinate"
+                value={overallPercentage}
+                sx={{
+                  height: 8,
+                  borderRadius: 4,
+                  bgcolor: "rgba(255, 255, 255, 0.25)",
+                  "& .MuiLinearProgress-bar": {
+                    bgcolor: "#10B981",
                     borderRadius: 4,
-                    bgcolor: "rgba(255, 255, 255, 0.25)",
-                    "& .MuiLinearProgress-bar": {
-                      bgcolor: "#10B981",
-                      borderRadius: 4,
+                  },
+                }}
+              />
+            </Paper>
+
+            {/* 2. Daily Inspiration Card */}
+            <Paper
+              elevation={0}
+              sx={{
+                p: 2.5,
+                borderRadius: "16px",
+                bgcolor: "rgba(255, 255, 255, 0.12)",
+                backdropFilter: "blur(10px)",
+                WebkitBackdropFilter: "blur(10px)",
+                border: "1px solid rgba(255, 255, 255, 0.2)",
+                color: "white",
+                boxShadow: "0 8px 32px rgba(0, 0, 0, 0.12)",
+                minHeight: "140px",
+                display: "flex",
+                flexDirection: "column",
+                justifyContent: "space-between",
+              }}
+            >
+              {/* Header with Title */}
+              <Box
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  mb: 0.5,
+                }}
+              >
+                <Typography
+                  variant="caption"
+                  sx={{
+                    fontSize: "12px",
+                    fontWeight: 700,
+                    color: "rgba(255, 255, 255, 0.7)",
+                    letterSpacing: "1px",
+                    textTransform: "uppercase",
+                  }}
+                >
+                  DAILY INSPIRATION ✨
+                </Typography>
+              </Box>
+
+              {/* Quote Text & Author with Smooth Fade Transition */}
+              <Box
+                sx={{
+                  flexGrow: 1,
+                  display: "flex",
+                  flexDirection: "column",
+                  justifyContent: "center",
+                  my: 0.5,
+                  opacity: isQuoteVisible ? 1 : 0,
+                  transition: "opacity 300ms ease-in-out",
+                }}
+              >
+                <Typography
+                  variant="body2"
+                  sx={{
+                    fontStyle: "italic",
+                    fontSize: "14px",
+                    fontWeight: 500,
+                    color: "rgba(255, 255, 255, 0.95)",
+                    lineHeight: 1.4,
+                    mb: 0.5,
+                    display: "-webkit-box",
+                    WebkitLineClamp: 3,
+                    WebkitBoxOrient: "vertical",
+                    overflow: "hidden",
+                  }}
+                >
+                  "{MOTIVATIONAL_QUOTES[quoteIndex]?.quote}"
+                </Typography>
+                <Typography
+                  variant="caption"
+                  sx={{
+                    fontSize: "12px",
+                    color: "rgba(255, 255, 255, 0.7)",
+                    fontWeight: 500,
+                    textAlign: "right",
+                  }}
+                >
+                  — {MOTIVATIONAL_QUOTES[quoteIndex]?.author}
+                </Typography>
+              </Box>
+            </Paper>
+
+            {/* 3. AI Productivity Insight Card */}
+            <Paper
+              elevation={0}
+              sx={{
+                p: 2.5,
+                borderRadius: "16px",
+                bgcolor: "rgba(255, 255, 255, 0.12)",
+                backdropFilter: "blur(10px)",
+                WebkitBackdropFilter: "blur(10px)",
+                border: "1px solid rgba(255, 255, 255, 0.2)",
+                color: "white",
+                boxShadow: "0 8px 32px rgba(0, 0, 0, 0.12)",
+                minHeight: "140px",
+                display: "flex",
+                flexDirection: "column",
+                justifyContent: "space-between",
+              }}
+            >
+              {/* Header with Title */}
+              <Box
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  mb: 0.5,
+                }}
+              >
+                <Typography
+                  variant="caption"
+                  sx={{
+                    fontSize: "12px",
+                    fontWeight: 700,
+                    color: "rgba(255, 255, 255, 0.7)",
+                    letterSpacing: "1px",
+                    textTransform: "uppercase",
+                  }}
+                >
+                  AI INSIGHT 🧠
+                </Typography>
+              </Box>
+
+              {/* Insight Text */}
+              <Box
+                sx={{
+                  flexGrow: 1,
+                  display: "flex",
+                  alignItems: "center",
+                  my: 0.5,
+                }}
+              >
+                <Typography
+                  variant="body2"
+                  sx={{
+                    fontStyle: "italic",
+                    fontSize: "14px",
+                    fontWeight: 500,
+                    color: "rgba(255, 255, 255, 0.95)",
+                    lineHeight: 1.45,
+                    display: "-webkit-box",
+                    WebkitLineClamp: 3,
+                    WebkitBoxOrient: "vertical",
+                    overflow: "hidden",
+                  }}
+                >
+                  "{getAIInsight(approvedChecklists)}"
+                </Typography>
+              </Box>
+
+              {/* Action Button */}
+              <Box sx={{ pt: 0.5 }}>
+                <Button
+                  size="small"
+                  onClick={() => navigate("/agent")}
+                  sx={{
+                    bgcolor: "rgba(255, 255, 255, 0.15)",
+                    color: "#ffffff",
+                    border: "1px solid rgba(255, 255, 255, 0.25)",
+                    backdropFilter: "blur(5px)",
+                    borderRadius: "8px",
+                    textTransform: "none",
+                    fontWeight: 600,
+                    fontSize: "0.8rem",
+                    py: 0.4,
+                    px: 1.5,
+                    boxShadow: "0 2px 8px rgba(0, 0, 0, 0.1)",
+                    "&:hover": {
+                      bgcolor: "rgba(255, 255, 255, 0.25)",
+                      borderColor: "rgba(255, 255, 255, 0.4)",
                     },
                   }}
-                />
-              </Paper>
-            </Grid>
-          </Grid>
+                >
+                  ✨ Ask AI Coach
+                </Button>
+              </Box>
+            </Paper>
+          </Box>
         </Paper>
 
-        {/* Filter / Search Bar (Search + Status + Priority Filter) */}
+        {/* Global Search & Filter Bar Row */}
         <Paper
           elevation={0}
           sx={{
             p: 2,
-            mb: 4,
+            my: 3,
             borderRadius: 3,
             border: "1px solid",
             borderColor: "divider",
@@ -383,16 +716,18 @@ function Dashboard() {
             display: "flex",
             flexDirection: { xs: "column", md: "row" },
             alignItems: "center",
+            justifyContent: "space-between",
             gap: 2,
           }}
         >
-          {/* Text search */}
+          {/* 1. Main Search Bar (Flexible Growth) */}
           <TextField
             fullWidth
             size="small"
             placeholder="Search checklists or tasks (e.g. 'work', 'groceries', 'review')..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
+            sx={{ flex: 1, minWidth: { xs: "100%", md: 240 } }}
             InputProps={{
               startAdornment: (
                 <InputAdornment position="start">
@@ -409,42 +744,62 @@ function Dashboard() {
             }}
           />
 
-          {/* Status Filter */}
-          <FormControl size="small" sx={{ minWidth: { xs: "100%", sm: 160 } }}>
-            <InputLabel id="filter-status-label">Status</InputLabel>
-            <Select
-              labelId="filter-status-label"
-              value={statusFilter}
-              label="Status"
-              onChange={(e) => setStatusFilter(e.target.value)}
-              startAdornment={
-                <InputAdornment position="start">
-                  <FilterListIcon fontSize="small" color="action" />
-                </InputAdornment>
-              }
-            >
-              <MenuItem value="all">All Statuses</MenuItem>
-              <MenuItem value="completed">Completed</MenuItem>
-              <MenuItem value="in-progress">In Progress</MenuItem>
-              <MenuItem value="empty">Empty</MenuItem>
-            </Select>
-          </FormControl>
+          {/* 2. Global Filter Dropdowns Container */}
+          <Box
+            sx={{
+              display: "flex",
+              flexWrap: "wrap",
+              alignItems: "center",
+              gap: 1.5,
+              width: { xs: "100%", md: "auto" },
+            }}
+          >
+            {/* Status Filter */}
+            <FormControl size="small" sx={{ minWidth: 145, flex: { xs: 1, sm: "initial" } }}>
+              <InputLabel id="filter-status-label">Status</InputLabel>
+              <Select
+                labelId="filter-status-label"
+                value={statusFilter}
+                label="Status"
+                onChange={(e) => setStatusFilter(e.target.value)}
+              >
+                <MenuItem value="all">All Status</MenuItem>
+                <MenuItem value="pending">Pending</MenuItem>
+                <MenuItem value="completed">Completed</MenuItem>
+              </Select>
+            </FormControl>
 
-          {/* Priority Filter */}
-          <FormControl size="small" sx={{ minWidth: { xs: "100%", sm: 160 } }}>
-            <InputLabel id="filter-priority-label">Priority</InputLabel>
-            <Select
-              labelId="filter-priority-label"
-              value={priorityFilter}
-              label="Priority"
-              onChange={(e) => setPriorityFilter(e.target.value)}
-            >
-              <MenuItem value="all">All Priorities</MenuItem>
-              <MenuItem value="high">High Priority</MenuItem>
-              <MenuItem value="medium">Medium Priority</MenuItem>
-              <MenuItem value="low">Low Priority</MenuItem>
-            </Select>
-          </FormControl>
+            {/* Priority Filter */}
+            <FormControl size="small" sx={{ minWidth: 155, flex: { xs: 1, sm: "initial" } }}>
+              <InputLabel id="filter-priority-label">Priority</InputLabel>
+              <Select
+                labelId="filter-priority-label"
+                value={priorityFilter}
+                label="Priority"
+                onChange={(e) => setPriorityFilter(e.target.value)}
+              >
+                <MenuItem value="all">All Priorities</MenuItem>
+                <MenuItem value="high" sx={{ color: "#dc2626", fontWeight: 600 }}>High</MenuItem>
+                <MenuItem value="medium" sx={{ color: "#d97706", fontWeight: 600 }}>Medium</MenuItem>
+                <MenuItem value="low" sx={{ color: "#2563eb", fontWeight: 600 }}>Low</MenuItem>
+              </Select>
+            </FormControl>
+
+            {(search || statusFilter !== "all" || priorityFilter !== "all") && (
+              <Button
+                size="small"
+                variant="outlined"
+                onClick={() => {
+                  setSearch("");
+                  setStatusFilter("all");
+                  setPriorityFilter("all");
+                }}
+                sx={{ textTransform: "none", fontWeight: 600, height: 38 }}
+              >
+                Clear
+              </Button>
+            )}
+          </Box>
         </Paper>
 
         {/* Checklists Grid with Identical-Size Cards */}
@@ -467,24 +822,24 @@ function Dashboard() {
             <ListAltIcon sx={{ fontSize: 64, color: "text.secondary", mb: 2, opacity: 0.5 }} />
             <Typography variant="h6" fontWeight={700} gutterBottom>
               {search || statusFilter !== "all" || priorityFilter !== "all"
-                ? "No checklists match your search/filter."
+                ? "No tasks or checklists match the selected filters."
                 : "No checklists created yet"}
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 450, mx: "auto", mb: 3 }}>
               {search || statusFilter !== "all" || priorityFilter !== "all"
-                ? "Try clearing your search query or reset the filters."
+                ? "Try searching with a different keyword or reset the filters."
                 : "Get started by creating your first checklist above!"}
             </Typography>
             {search || statusFilter !== "all" || priorityFilter !== "all" ? (
               <Button
-                variant="outlined"
+                variant="contained"
                 onClick={() => {
                   setSearch("");
                   setStatusFilter("all");
                   setPriorityFilter("all");
                 }}
               >
-                Reset Filters
+                Clear Filters
               </Button>
             ) : (
               <Button
@@ -596,13 +951,11 @@ function Dashboard() {
 }
 
 // ============================================================
-// INDIVIDUAL CHECKLIST CARD WITH LOCAL TASK FILTERING
+// INDIVIDUAL CHECKLIST CARD (WITHOUT INTERNAL DROPDOWNS)
 // Strictly equal dimensions (height: 380px) regardless of task count or filters
 // ============================================================
 function DashboardChecklistCard({ checklist, onToggleAllTasks, onDelete }) {
   const navigate = useNavigate();
-  const [taskStatusFilter, setTaskStatusFilter] = useState("all"); // "all", "completed", "incomplete"
-  const [taskPriorityFilter, setTaskPriorityFilter] = useState("all"); // "all", "high", "medium", "low"
 
   const totalTasks = checklist.tasks?.length || 0;
   const completedTasks =
@@ -615,20 +968,7 @@ function DashboardChecklistCard({ checklist, onToggleAllTasks, onDelete }) {
       : 0;
   const priorityProps = getPriorityBadgeProps(checklist.priority);
 
-  // Independent card-level task filtering logic
-  const filteredTasks = (checklist.tasks || []).filter((task) => {
-    // 1. Completion filter
-    if (taskStatusFilter === "completed" && !task.completed) return false;
-    if (taskStatusFilter === "incomplete" && task.completed) return false;
-
-    // 2. Priority filter
-    if (taskPriorityFilter !== "all") {
-      const p = (task.priority || "medium").toLowerCase();
-      if (p !== taskPriorityFilter.toLowerCase()) return false;
-    }
-
-    return true;
-  });
+  const tasksToRender = checklist.tasks || [];
 
   return (
     <Card
@@ -774,63 +1114,12 @@ function DashboardChecklistCard({ checklist, onToggleAllTasks, onDelete }) {
           />
         </Box>
 
-        {/* 3. Card-Level Task Filter Controls (Fixed Height: 34px) */}
-        <Box
-          onClick={(e) => e.stopPropagation()}
-          sx={{
-            height: 34,
-            minHeight: 34,
-            maxHeight: 34,
-            display: "flex",
-            alignItems: "center",
-            gap: 1,
-            mb: 1.5,
-          }}
-        >
-          {/* Status Filter */}
-          <FormControl size="small" sx={{ minWidth: 0, flex: 1 }}>
-            <Select
-              value={taskStatusFilter}
-              onChange={(e) => setTaskStatusFilter(e.target.value)}
-              sx={{
-                height: 28,
-                fontSize: "0.75rem",
-                bgcolor: "background.paper",
-                "& .MuiSelect-select": { py: 0.25, px: 1 },
-              }}
-            >
-              <MenuItem value="all" sx={{ fontSize: "0.78rem" }}>All Status</MenuItem>
-              <MenuItem value="incomplete" sx={{ fontSize: "0.78rem" }}>Incomplete</MenuItem>
-              <MenuItem value="completed" sx={{ fontSize: "0.78rem" }}>Completed</MenuItem>
-            </Select>
-          </FormControl>
-
-          {/* Priority Filter */}
-          <FormControl size="small" sx={{ minWidth: 0, flex: 1 }}>
-            <Select
-              value={taskPriorityFilter}
-              onChange={(e) => setTaskPriorityFilter(e.target.value)}
-              sx={{
-                height: 28,
-                fontSize: "0.75rem",
-                bgcolor: "background.paper",
-                "& .MuiSelect-select": { py: 0.25, px: 1 },
-              }}
-            >
-              <MenuItem value="all" sx={{ fontSize: "0.78rem" }}>All Priority</MenuItem>
-              <MenuItem value="high" sx={{ fontSize: "0.78rem", color: "#dc2626", fontWeight: 700 }}>High</MenuItem>
-              <MenuItem value="medium" sx={{ fontSize: "0.78rem", color: "#d97706", fontWeight: 700 }}>Medium</MenuItem>
-              <MenuItem value="low" sx={{ fontSize: "0.78rem", color: "#2563eb", fontWeight: 700 }}>Low</MenuItem>
-            </Select>
-          </FormControl>
-        </Box>
-
-        {/* 4. Task Preview Area (Strict Fixed Height: 115px with internal scroll) */}
+        {/* 3. Task Preview Area (Expanded Height: 155px with internal scroll) */}
         <Box
           sx={{
-            height: 115,
-            minHeight: 115,
-            maxHeight: 115,
+            height: 155,
+            minHeight: 155,
+            maxHeight: 155,
             overflowY: "auto",
             overflowX: "hidden",
             pr: 0.5,
@@ -857,7 +1146,7 @@ function DashboardChecklistCard({ checklist, onToggleAllTasks, onDelete }) {
                 No tasks yet. Click to add.
               </Typography>
             </Box>
-          ) : filteredTasks.length === 0 ? (
+          ) : tasksToRender.length === 0 ? (
             <Box
               sx={{
                 height: "100%",
@@ -873,12 +1162,12 @@ function DashboardChecklistCard({ checklist, onToggleAllTasks, onDelete }) {
               }}
             >
               <Typography variant="body2" color="text.secondary" sx={{ fontStyle: "italic", fontSize: "0.82rem" }}>
-                No tasks match these filters.
+                No matching tasks.
               </Typography>
             </Box>
           ) : (
             <Stack spacing={0.75}>
-              {filteredTasks.map((task, idx) => {
+              {tasksToRender.map((task, idx) => {
                 const taskPriority = getPriorityBadgeProps(task.priority);
                 return (
                   <Box
@@ -942,7 +1231,7 @@ function DashboardChecklistCard({ checklist, onToggleAllTasks, onDelete }) {
         </Box>
       </Box>
 
-      {/* 5. Card Footer Actions (Strict Fixed Height: 52px at bottom) */}
+      {/* 4. Card Footer Actions (Strict Fixed Height: 52px at bottom) */}
       <Box
         sx={{
           p: 1.25,
