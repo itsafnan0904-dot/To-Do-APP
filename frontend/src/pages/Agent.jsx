@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import {
   Box,
   Container,
@@ -47,7 +48,7 @@ function Agent() {
     {
       role: "assistant",
       content:
-        "Hi! What would you like to accomplish today? Tell me what you're planning (e.g. *'Prep for a software job interview'* or *'30-day workout routine'*), and I will structure a ready-to-use draft checklist for you!",
+        "Hi! I am your AI Productivity Assistant & Checklist Architect.\n\nI can help you:\n- **Create new checklists:** (e.g. *'Prep for a software job interview'* or *'30-day workout routine'*)\n- **Analyze your tasks & productivity:** (e.g. *'What tasks are left?'*, *'Which checklist is closest to completion?'*, or *'Group my pending tasks into 25-min focus blocks'*)\n\nHow can I help you today?",
     },
   ]);
   const [isLoading, setIsLoading] = useState(false);
@@ -335,6 +336,31 @@ function Agent() {
                           "& ul, & ol": { pl: 2.5, my: 0.5 },
                           "& li": { mb: 0.25 },
                           "& strong": { fontWeight: 700 },
+                          "& h1, & h2, & h3, & h4": {
+                            mt: 1.5,
+                            mb: 0.75,
+                            fontWeight: 700,
+                            color: "text.primary",
+                          },
+                          "& table": {
+                            width: "100%",
+                            borderCollapse: "collapse",
+                            my: 1.5,
+                            fontSize: "0.82rem",
+                          },
+                          "& th": {
+                            bgcolor: "rgba(0, 0, 0, 0.04)",
+                            fontWeight: 700,
+                            border: "1px solid",
+                            borderColor: "divider",
+                            p: 1,
+                            textAlign: "left",
+                          },
+                          "& td": {
+                            border: "1px solid",
+                            borderColor: "divider",
+                            p: 0.85,
+                          },
                         }}
                       >
                         {isUser ? (
@@ -343,7 +369,9 @@ function Agent() {
                           </Typography>
                         ) : (
                           <Box sx={{ fontSize: "0.875rem", lineHeight: 1.6 }}>
-                            <ReactMarkdown>{msg.content}</ReactMarkdown>
+                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                              {msg.content}
+                            </ReactMarkdown>
                           </Box>
                         )}
                       </Paper>
