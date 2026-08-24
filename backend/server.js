@@ -34,16 +34,39 @@ app.get("/", (req, res) => {
     res.send("Todo App Backend is running!");
 });
 
-// Connect to MongoDB
-mongoose
-    .connect(process.env.MONGO_URI)
-    .then(() => {
-        console.log("MongoDB connected successfully");
+// MongoDB connection cache for serverless environments
+let isConnected = false;
 
+const connectDB = async () => {
+    if (isConnected) return;
+    try {
+        if (!process.env.MONGO_URI) {
+            console.error("MONGO_URI environment variable is not defined");
+            return;
+        }
+        await mongoose.connect(process.env.MONGO_URI);
+        isConnected = true;
+        console.log("MongoDB connected successfully");
+    } catch (error) {
+        console.error("MongoDB connection failed:", error);
+    }
+};
+
+// Middleware to ensure DB connection per request in serverless
+app.use(async (req, res, next) => {
+    if (!isConnected) {
+        await connectDB();
+    }
+    next();
+});
+
+// Start local dev server if not in Vercel serverless environment
+if (process.env.NODE_ENV !== "production" && !process.env.VERCEL) {
+    connectDB().then(() => {
         app.listen(PORT, () => {
             console.log(`Server is running on port ${PORT}`);
         });
-    })
-    .catch((error) => {
-        console.error("MongoDB connection failed:", error);
     });
+}
+
+export default app;
