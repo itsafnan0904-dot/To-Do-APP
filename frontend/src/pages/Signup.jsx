@@ -1,5 +1,5 @@
 import { useState } from "react";
-import axios from "axios";
+import api from "../utils/api";
 import { useNavigate, Link as RouterLink } from "react-router-dom";
 import {
   Box,
@@ -52,7 +52,7 @@ function Signup() {
     setSuccessMsg("");
 
     try {
-      await axios.post("http://localhost:5000/api/auth/signup", formData);
+      await api.post("/auth/signup", formData);
 
       setSuccessMsg("Account created successfully! Redirecting to Sign In...");
 

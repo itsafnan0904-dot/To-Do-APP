@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import axios from "axios";
+import api from "../utils/api";
 import {
   Drawer,
   Box,
@@ -62,21 +62,14 @@ function DashboardAgentDrawer({ isOpen, onClose }) {
     setLoading(true);
 
     try {
-      const token = localStorage.getItem("token");
       const apiMessages = newMessages.map((m) => ({
         role: m.role,
         content: m.content,
       }));
 
-      const res = await axios.post(
-        "http://localhost:5000/api/agent/dashboard-assistant",
-        { messages: apiMessages },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      const res = await api.post("/agent/dashboard-assistant", {
+        messages: apiMessages,
+      });
 
       setMessages([
         ...newMessages,

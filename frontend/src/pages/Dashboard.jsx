@@ -1,6 +1,6 @@
 import Navbar from "../components/Navbar";
 import { useEffect, useState, useMemo } from "react";
-import axios from "axios";
+import api from "../utils/api";
 import { useNavigate } from "react-router-dom";
 import {
   Box,
@@ -176,17 +176,7 @@ function Dashboard() {
   // =========================
   const fetchChecklists = async () => {
     try {
-      const token = localStorage.getItem("token");
-      if (!token) return;
-
-      const response = await axios.get(
-        "http://localhost:5000/api/checklists?status=approved",
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      const response = await api.get("/checklists?status=approved");
 
       setApprovedChecklists(response.data.checklists || []);
     } catch (error) {
@@ -212,22 +202,12 @@ function Dashboard() {
     if (!newChecklistTitle.trim()) return;
 
     try {
-      const token = localStorage.getItem("token");
-
-      const response = await axios.post(
-        "http://localhost:5000/api/checklists",
-        {
-          title: newChecklistTitle.trim(),
-          priority: newChecklistPriority || "medium",
-          status: "approved",
-          tasks: [],
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      const response = await api.post("/checklists", {
+        title: newChecklistTitle.trim(),
+        priority: newChecklistPriority || "medium",
+        status: "approved",
+        tasks: [],
+      });
 
       setApprovedChecklists([response.data.checklist, ...approvedChecklists]);
       setNewChecklistTitle("");
@@ -244,12 +224,7 @@ function Dashboard() {
   // =========================
   const handleDeleteChecklist = async (id) => {
     try {
-      const token = localStorage.getItem("token");
-      await axios.delete(`http://localhost:5000/api/checklists/${id}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      await api.delete(`/checklists/${id}`);
 
       setApprovedChecklists((prev) =>
         prev.filter((checklist) => checklist._id !== id)
@@ -281,20 +256,36 @@ function Dashboard() {
     );
 
     try {
-      const token = localStorage.getItem("token");
-      await axios.put(
-        `http://localhost:5000/api/checklists/${checklist._id}`,
-        {
-          tasks: updatedTasks,
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      await api.put(`/checklists/${checklist._id}`, {
+        tasks: updatedTasks,
+      });
     } catch (error) {
       console.error("Error updating all checklist tasks:", error);
+      fetchChecklists();
+    }
+  };
+
+  // =========================
+  // TOGGLE SINGLE TASK FROM CARD VIEW
+  // =========================
+  const handleToggleTask = async (checklist, task) => {
+    const updatedTasks = checklist.tasks.map((t) =>
+      t._id === task._id ? { ...t, completed: !t.completed } : t
+    );
+
+    // Optimistic UI update
+    setApprovedChecklists((prev) =>
+      prev.map((cl) =>
+        cl._id === checklist._id ? { ...cl, tasks: updatedTasks } : cl
+      )
+    );
+
+    try {
+      await api.put(`/checklists/${checklist._id}`, {
+        tasks: updatedTasks,
+      });
+    } catch (error) {
+      console.error("Error updating checklist task:", error);
       fetchChecklists();
     }
   };

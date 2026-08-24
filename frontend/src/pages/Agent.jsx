@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import axios from "axios";
+import api from "../utils/api";
 import { useNavigate } from "react-router-dom";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -79,12 +79,7 @@ function Agent() {
     try {
       const token = localStorage.getItem("token");
       if (!token) return;
-      const response = await axios.get(
-        "http://localhost:5000/api/checklists?status=draft",
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
+      const response = await api.get("/checklists?status=draft");
       setDraftChecklists(response.data.checklists || []);
     } catch (error) {
       console.error("Error fetching drafts:", error);
@@ -102,13 +97,9 @@ function Agent() {
     setIsLoading(true);
 
     try {
-      const token = localStorage.getItem("token");
-
-      const response = await axios.post(
-        "http://localhost:5000/api/agent",
-        { messages: newMessages },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      const response = await api.post("/agent", {
+        messages: newMessages,
+      });
 
       const aiMessage = response.data.message || "";
       let displayMessage = aiMessage;
@@ -160,12 +151,7 @@ function Agent() {
   // Checklist Actions
   const handleApprove = async (id) => {
     try {
-      const token = localStorage.getItem("token");
-      await axios.post(
-        `http://localhost:5000/api/checklists/${id}/approve`,
-        {},
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      await api.post(`/checklists/${id}/approve`, {});
       await fetchDrafts();
       navigate("/dashboard");
     } catch (error) {
@@ -177,10 +163,7 @@ function Agent() {
   const handleDecline = async (id) => {
     if (!window.confirm("Discard this draft checklist?")) return;
     try {
-      const token = localStorage.getItem("token");
-      await axios.delete(`http://localhost:5000/api/checklists/${id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      await api.delete(`/checklists/${id}`);
       fetchDrafts();
     } catch (error) {
       console.error("Error declining:", error);
@@ -189,12 +172,11 @@ function Agent() {
 
   const handleTaskChange = async (checklistId, tasks, newTitle, newPriority) => {
     try {
-      const token = localStorage.getItem("token");
-      await axios.put(
-        `http://localhost:5000/api/checklists/${checklistId}`,
-        { tasks, title: newTitle, priority: newPriority },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      await api.put(`/checklists/${checklistId}`, {
+        tasks,
+        title: newTitle,
+        priority: newPriority,
+      });
       fetchDrafts();
     } catch (error) {
       console.error("Error updating tasks:", error);

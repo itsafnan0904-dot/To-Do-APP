@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import axios from "axios";
+import api from "../utils/api";
 import { useParams, useNavigate, Link as RouterLink } from "react-router-dom";
 import {
   Box,
@@ -67,12 +67,7 @@ function ChecklistDetail() {
         return;
       }
 
-      const response = await axios.get(
-        `http://localhost:5000/api/checklists/${id}`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
+      const response = await api.get(`/checklists/${id}`);
 
       const cl = response.data.checklist;
       setChecklist(cl);
@@ -91,12 +86,11 @@ function ChecklistDetail() {
 
   const handleSave = async (updatedTasks, updatedTitle = title, updatedPriority = checklistPriority) => {
     try {
-      const token = localStorage.getItem("token");
-      await axios.put(
-        `http://localhost:5000/api/checklists/${id}`,
-        { tasks: updatedTasks, title: updatedTitle, priority: updatedPriority },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      await api.put(`/checklists/${id}`, {
+        tasks: updatedTasks,
+        title: updatedTitle,
+        priority: updatedPriority,
+      });
       setTasks(updatedTasks);
       setTitle(updatedTitle);
       setChecklistPriority(updatedPriority);
@@ -118,12 +112,9 @@ function ChecklistDetail() {
     const task = newTasks[idx];
     if (task._id) {
       try {
-        const token = localStorage.getItem("token");
-        await axios.put(
-          `http://localhost:5000/api/checklists/${id}/tasks/${task._id}`,
-          { priority: newPriority },
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
+        await api.put(`/checklists/${id}/tasks/${task._id}`, {
+          priority: newPriority,
+        });
       } catch (err) {
         console.error("Error updating task priority:", err);
       }
@@ -163,12 +154,9 @@ function ChecklistDetail() {
 
   const handleToggleTask = async (taskId, currentStatus) => {
     try {
-      const token = localStorage.getItem("token");
-      await axios.put(
-        `http://localhost:5000/api/checklists/${id}/tasks/${taskId}`,
-        { completed: !currentStatus },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      await api.put(`/checklists/${id}/tasks/${taskId}`, {
+        completed: !currentStatus,
+      });
 
       // Optimistic update
       setTasks(
@@ -202,10 +190,7 @@ function ChecklistDetail() {
 
   const handleDeleteChecklist = async () => {
     try {
-      const token = localStorage.getItem("token");
-      await axios.delete(`http://localhost:5000/api/checklists/${id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      await api.delete(`/checklists/${id}`);
       navigate("/dashboard");
     } catch (error) {
       console.error("Error deleting checklist:", error);
