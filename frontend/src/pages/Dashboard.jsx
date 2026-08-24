@@ -1,5 +1,5 @@
 import Navbar from "../components/Navbar";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import {
@@ -28,6 +28,8 @@ import {
   MenuItem,
   InputLabel,
   Tooltip,
+  Tabs,
+  Tab,
 } from "@mui/material";
 import {
   Add as AddIcon,
@@ -132,6 +134,7 @@ function Dashboard() {
   const [newChecklistTitle, setNewChecklistTitle] = useState("");
   const [newChecklistPriority, setNewChecklistPriority] = useState("medium");
   const [search, setSearch] = useState("");
+  const [activeTab, setActiveTab] = useState("all"); // "all", "in-progress", "yet-to-start", "completed", "high-priority"
   const [statusFilter, setStatusFilter] = useState("all"); // "all", "pending", "completed"
   const [priorityFilter, setPriorityFilter] = useState("all"); // "all", "high", "medium", "low"
   const [loading, setLoading] = useState(true);
@@ -314,45 +317,95 @@ function Dashboard() {
       : 0;
 
   // =========================
-  // CLIENT-SIDE SEARCH, STATUS & PRIORITY FILTERING (CARD-LEVEL VISIBILITY)
+  // DYNAMIC TAB COUNTS & COMPLETION CALCULATIONS
   // =========================
-  const filteredChecklists = approvedChecklists.filter((cl) => {
-    const query = search.toLowerCase().trim();
-    const allTasks = cl.tasks || [];
+  const getChecklistCompletionPercentage = (cl) => {
+    const total = cl.tasks?.length || 0;
+    if (total === 0) return 0;
+    const completed = cl.tasks.filter((t) => t.completed).length;
+    return Math.round((completed / total) * 100);
+  };
 
-    // 1. Search Query: Matches checklist title or any task title inside
-    if (query) {
-      const matchesTitle = cl.title.toLowerCase().includes(query);
-      const matchesAnyTask = allTasks.some((t) =>
-        t.title.toLowerCase().includes(query)
-      );
-      if (!matchesTitle && !matchesAnyTask) return false;
-    }
+  const tabCounts = useMemo(() => {
+    const counts = {
+      all: approvedChecklists.length,
+      inProgress: 0,
+      yetToStart: 0,
+      completed: 0,
+      highPriority: 0,
+    };
 
-    // 2. Global Status Filter:
-    // "pending" → Checklist must contain at least one incomplete task (or be empty)
-    // "completed" → Checklist must have tasks and all tasks completed
-    if (statusFilter === "pending") {
-      const hasPendingTasks = allTasks.some((t) => !t.completed);
-      if (allTasks.length > 0 && !hasPendingTasks) return false;
-    } else if (statusFilter === "completed") {
-      const total = allTasks.length;
-      const completed = allTasks.filter((t) => t.completed).length;
-      if (total === 0 || completed < total) return false;
-    }
+    approvedChecklists.forEach((cl) => {
+      const pct = getChecklistCompletionPercentage(cl);
+      if (pct > 0 && pct < 100) {
+        counts.inProgress += 1;
+      } else if (pct === 0) {
+        counts.yetToStart += 1;
+      } else if (pct === 100) {
+        counts.completed += 1;
+      }
 
-    // 3. Global Priority Filter:
-    // Filter ONLY by the checklist's own priority.
-    // Task priorities must NOT affect Dashboard card visibility.
-    if (
-      priorityFilter !== "all" &&
-      (cl.priority || "").toLowerCase() !== priorityFilter.toLowerCase()
-    ) {
-      return false;
-    }
+      if ((cl.priority || "medium").toLowerCase() === "high") {
+        counts.highPriority += 1;
+      }
+    });
 
-    return true;
-  });
+    return counts;
+  }, [approvedChecklists]);
+
+  // =========================
+  // MULTI-LAYER FILTERING PIPELINE (useMemo)
+  // Layer 1: Active Tab → Layer 2: Search → Layer 3: Status Filter → Layer 4: Priority Filter
+  // =========================
+  const filteredChecklists = useMemo(() => {
+    return approvedChecklists
+      // Layer 1: Active Tab Filter
+      .filter((cl) => {
+        if (activeTab === "all") return true;
+
+        const pct = getChecklistCompletionPercentage(cl);
+        if (activeTab === "in-progress") return pct > 0 && pct < 100;
+        if (activeTab === "yet-to-start") return pct === 0;
+        if (activeTab === "completed") return pct === 100;
+        if (activeTab === "high-priority")
+          return (cl.priority || "medium").toLowerCase() === "high";
+
+        return true;
+      })
+      // Layer 2: Search Bar Filter (matches title or any task title)
+      .filter((cl) => {
+        const query = search.toLowerCase().trim();
+        if (!query) return true;
+
+        const matchesTitle = (cl.title || "").toLowerCase().includes(query);
+        const matchesAnyTask = (cl.tasks || []).some((t) =>
+          (t.title || "").toLowerCase().includes(query)
+        );
+
+        return matchesTitle || matchesAnyTask;
+      })
+      // Layer 3: Global Status Filter
+      .filter((cl) => {
+        if (statusFilter === "all") return true;
+
+        const allTasks = cl.tasks || [];
+        if (statusFilter === "pending") {
+          const hasPendingTasks = allTasks.some((t) => !t.completed);
+          if (allTasks.length > 0 && !hasPendingTasks) return false;
+        } else if (statusFilter === "completed") {
+          const total = allTasks.length;
+          const completed = allTasks.filter((t) => t.completed).length;
+          if (total === 0 || completed < total) return false;
+        }
+
+        return true;
+      })
+      // Layer 4: Global Priority Filter
+      .filter((cl) => {
+        if (priorityFilter === "all") return true;
+        return (cl.priority || "").toLowerCase() === priorityFilter.toLowerCase();
+      });
+  }, [approvedChecklists, activeTab, search, statusFilter, priorityFilter]);
 
   return (
     <Box sx={{ minHeight: "100vh", bgcolor: "background.default", pb: 10 }}>
@@ -802,6 +855,67 @@ function Dashboard() {
           </Box>
         </Paper>
 
+        {/* Tab Navigation System (Active Tab Filter with Dynamic Badges) */}
+        <Box sx={{ mb: 4, display: "flex", flexWrap: "wrap", gap: 1.5, alignItems: "center" }}>
+          {[
+            { key: "all", label: "All", count: tabCounts.all },
+            { key: "in-progress", label: "In Progress", count: tabCounts.inProgress },
+            { key: "yet-to-start", label: "Yet to Start", count: tabCounts.yetToStart },
+            { key: "completed", label: "Completed", count: tabCounts.completed },
+            { key: "high-priority", label: "🔥 High Priority", count: tabCounts.highPriority },
+          ].map((tab) => {
+            const isActive = activeTab === tab.key;
+            return (
+              <Button
+                key={tab.key}
+                onClick={() => setActiveTab(tab.key)}
+                disableElevation
+                sx={{
+                  borderRadius: "24px",
+                  px: 2.2,
+                  py: 0.8,
+                  fontSize: "0.875rem",
+                  fontWeight: isActive ? 700 : 500,
+                  textTransform: "none",
+                  transition: "all 0.2s ease-in-out",
+                  bgcolor: isActive
+                    ? "primary.main"
+                    : "background.paper",
+                  color: isActive ? "#ffffff" : "text.secondary",
+                  border: "1px solid",
+                  borderColor: isActive ? "primary.main" : "divider",
+                  boxShadow: isActive
+                    ? "0 4px 14px rgba(91, 66, 243, 0.25)"
+                    : "none",
+                  "&:hover": {
+                    bgcolor: isActive ? "primary.dark" : "rgba(0, 0, 0, 0.04)",
+                    borderColor: isActive ? "primary.dark" : "divider",
+                  },
+                }}
+              >
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                  <span>{tab.label}</span>
+                  <Chip
+                    size="small"
+                    label={tab.count}
+                    sx={{
+                      height: 20,
+                      fontSize: "0.72rem",
+                      fontWeight: 700,
+                      bgcolor: isActive
+                        ? "rgba(255, 255, 255, 0.25)"
+                        : "rgba(0, 0, 0, 0.06)",
+                      color: isActive ? "#ffffff" : "text.primary",
+                      borderRadius: "10px",
+                      px: 0.2,
+                    }}
+                  />
+                </Box>
+              </Button>
+            );
+          })}
+        </Box>
+
         {/* Checklists Grid with Identical-Size Cards */}
         {loading ? (
           <Box sx={{ display: "flex", justifyContent: "center", py: 8 }}>
@@ -821,20 +935,21 @@ function Dashboard() {
           >
             <ListAltIcon sx={{ fontSize: 64, color: "text.secondary", mb: 2, opacity: 0.5 }} />
             <Typography variant="h6" fontWeight={700} gutterBottom>
-              {search || statusFilter !== "all" || priorityFilter !== "all"
+              {search || statusFilter !== "all" || priorityFilter !== "all" || activeTab !== "all"
                 ? "No tasks or checklists match the selected filters."
                 : "No checklists created yet"}
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 450, mx: "auto", mb: 3 }}>
-              {search || statusFilter !== "all" || priorityFilter !== "all"
-                ? "Try searching with a different keyword or reset the filters."
+              {search || statusFilter !== "all" || priorityFilter !== "all" || activeTab !== "all"
+                ? "Try adjusting your search query, active tab, or filters to view more items."
                 : "Get started by creating your first checklist above!"}
             </Typography>
-            {search || statusFilter !== "all" || priorityFilter !== "all" ? (
+            {search || statusFilter !== "all" || priorityFilter !== "all" || activeTab !== "all" ? (
               <Button
                 variant="contained"
                 onClick={() => {
                   setSearch("");
+                  setActiveTab("all");
                   setStatusFilter("all");
                   setPriorityFilter("all");
                 }}
